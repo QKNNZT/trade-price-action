@@ -1,26 +1,76 @@
 # routes/trades.py
 from flask import Blueprint, request, jsonify, send_from_directory
-from flask_cors import CORS
-import sqlite3
 import json
 import os
-from config import DB_PATH, UPLOAD_FOLDER, ALLOWED_EXTENSIONS
+
+from config import UPLOAD_FOLDER
 from db import get_connection
 from models.trades import dict_trade
 from utils.files import save_upload
+from utils.json_helpers import to_json_list
+from utils.risk import calculate_profit_and_pct
 
 trades_bp = Blueprint("trades", __name__, url_prefix="/api")
-CORS(trades_bp, origins=["http://localhost:3000"])  # BẬT CORS
 
-# === GET ALL TRADES ===
+
+# === GET ALL / FILTERED TRADES ===
 @trades_bp.get("/trades")
 def get_trades():
+    """
+    Trả về list trades.
+    Hỗ trợ filter basic qua query string (tùy chọn):
+      - symbol
+      - timeframe
+      - session
+      - setup
+      - from (date >=)
+      - to (date <=)
+    Ví dụ:
+      /api/trades?symbol=EURUSD&session=London&from=2024-01-01&to=2024-12-31
+    """
+    symbol = request.args.get("symbol")
+    timeframe = request.args.get("timeframe")
+    session = request.args.get("session")
+    setup = request.args.get("setup")
+    date_from = request.args.get("from")
+    date_to = request.args.get("to")
+
+    query = "SELECT * FROM trades"
+    conditions = []
+    params = []
+
+    if symbol:
+        conditions.append("symbol = ?")
+        params.append(symbol)
+    if timeframe:
+        conditions.append("timeframe = ?")
+        params.append(timeframe)
+    if session:
+        conditions.append("session = ?")
+        params.append(session)
+    if setup:
+        conditions.append("setup = ?")
+        params.append(setup)
+    if date_from:
+        conditions.append("date >= ?")
+        params.append(date_from)
+    if date_to:
+        conditions.append("date <= ?")
+        params.append(date_to)
+
+    if conditions:
+        query += " WHERE " + " AND ".join(conditions)
+
+    query += " ORDER BY date DESC, id DESC"
+
     conn = get_connection()
     c = conn.cursor()
-    c.execute("SELECT * FROM trades ORDER BY date DESC, id DESC")
+    c.execute(query, tuple(params))
     rows = c.fetchall()
     conn.close()
+
     return jsonify([dict_trade(r) for r in rows]), 200
+
 
 # === ADD TRADE ===
 @trades_bp.post("/trades")
@@ -29,20 +79,11 @@ def add_trade():
     files = request.files
 
     # Upload chart_before
-    chart_before = save_upload(files.get("chart_before")) if "chart_before" in files else None
+    chart_before = (
+        save_upload(files.get("chart_before")) if "chart_before" in files else None
+    )
 
-    # Xử lý array → JSON string
-    def to_json_list(value):
-        if not value:
-            return "[]"
-        try:
-            arr = json.loads(value)
-            if isinstance(arr, list):
-                return json.dumps(arr)
-        except:
-            pass
-        return json.dumps([v.strip() for v in value.split(",") if v.strip()])
-
+    # Chuẩn hóa các field dạng list
     confluence = to_json_list(data.get("confluence"))
     entry_model = to_json_list(data.get("entry_model"))
     psychological_tags = to_json_list(data.get("psychological_tags"))
@@ -53,14 +94,14 @@ def add_trade():
     tp = float(data.get("tp") or 0)
     capital = float(data.get("capital") or 0)
 
-    # Tính RR
+    # Tính RR (risk:reward)
     rr = abs((tp - entry) / (entry - sl)) if entry != sl and sl != 0 else 0
 
-    # Insert
     conn = get_connection()
     c = conn.cursor()
     try:
-        c.execute("""
+        c.execute(
+            """
             INSERT INTO trades (
                 date, symbol, setup, direction,
                 entry, sl, tp, exit, capital, rr, profit, profit_pct,
@@ -71,19 +112,41 @@ def add_trade():
                 chart_before, chart_after,
                 psychological_tags, lessons
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            data.get("date"), data.get("symbol"), data.get("setup"), data.get("direction"),
-            entry, sl, tp, 0, capital, rr, 0, 0,
-            data.get("note", ""), data.get("session", ""), data.get("timeframe", ""),
-            confluence, None, "[]",
-            data.get("entry_reason", ""), "",
-            data.get("htf_bias", ""), data.get("trend_direction", ""), data.get("structure_event", ""),
-            entry_model,
-            data.get("partial_tp", ""), data.get("be_trigger", ""), data.get("scale_mode", ""),
-            chart_before, None,
-            psychological_tags,
-            data.get("lessons", "")
-        ))
+        """,
+            (
+                data.get("date"),
+                data.get("symbol"),
+                data.get("setup"),
+                data.get("direction"),
+                entry,
+                sl,
+                tp,
+                0,  # exit
+                capital,
+                rr,
+                0,  # profit
+                0,  # profit_pct
+                data.get("note", ""),
+                data.get("session", ""),
+                data.get("timeframe", ""),
+                confluence,
+                None,  # grade
+                "[]",  # mistakes
+                data.get("entry_reason", ""),
+                "",
+                data.get("htf_bias", ""),
+                data.get("trend_direction", ""),
+                data.get("structure_event", ""),
+                entry_model,
+                data.get("partial_tp", ""),
+                data.get("be_trigger", ""),
+                data.get("scale_mode", ""),
+                chart_before,
+                None,  # chart_after
+                psychological_tags,
+                data.get("lessons", ""),
+            ),
+        )
         conn.commit()
         return jsonify({"message": "Trade added"}), 201
     except Exception as e:
@@ -92,11 +155,13 @@ def add_trade():
     finally:
         conn.close()
 
+
 # === UPLOAD CHART AFTER ===
 @trades_bp.post("/trades/<int:trade_id>/chart-after")
 def upload_chart_after(trade_id):
     if "chart_after" not in request.files:
         return jsonify({"error": "No file"}), 400
+
     file = request.files["chart_after"]
     filename = save_upload(file)
     if not filename:
@@ -105,7 +170,9 @@ def upload_chart_after(trade_id):
     conn = get_connection()
     c = conn.cursor()
     try:
-        c.execute("UPDATE trades SET chart_after = ? WHERE id = ?", (filename, trade_id))
+        c.execute(
+            "UPDATE trades SET chart_after = ? WHERE id = ?", (filename, trade_id)
+        )
         conn.commit()
         c.execute("SELECT * FROM trades WHERE id = ?", (trade_id,))
         row = c.fetchone()
@@ -116,20 +183,22 @@ def upload_chart_after(trade_id):
     finally:
         conn.close()
 
+
 # === DELETE TRADE ===
 @trades_bp.delete("/trades/<int:id>")
 def delete_trade(id):
     conn = get_connection()
     c = conn.cursor()
     try:
-        c.execute("SELECT chart_before, chart_after FROM trades WHERE id = ?", (id,))
+        c.execute(
+            "SELECT chart_before, chart_after FROM trades WHERE id = ?", (id,)
+        )
         row = c.fetchone()
         if not row:
             return jsonify({"error": "Trade not found"}), 404
 
         chart_before, chart_after = row
 
-        # XÓA FILE AN TOÀN
         def safe_remove(filename):
             if not filename:
                 return False
@@ -145,17 +214,24 @@ def delete_trade(id):
         before_ok = safe_remove(chart_before)
         after_ok = safe_remove(chart_after)
 
-        # XÓA TRADE
         c.execute("DELETE FROM trades WHERE id = ?", (id,))
         if c.rowcount == 0:
             return jsonify({"error": "Trade not deleted"}), 500
 
         conn.commit()
-        return jsonify({
-            "message": "Trade deleted",
-            "deleted_id": id,
-            "files_removed": {"chart_before": before_ok, "chart_after": after_ok}
-        }), 200
+        return (
+            jsonify(
+                {
+                    "message": "Trade deleted",
+                    "deleted_id": id,
+                    "files_removed": {
+                        "chart_before": before_ok,
+                        "chart_after": after_ok,
+                    },
+                }
+            ),
+            200,
+        )
 
     except Exception as e:
         conn.rollback()
@@ -163,6 +239,7 @@ def delete_trade(id):
         return jsonify({"error": "Server error"}), 500
     finally:
         conn.close()
+
 
 # === UPDATE EXIT ===
 @trades_bp.post("/update_exit/<int:id>")
@@ -173,40 +250,39 @@ def update_exit(id):
     conn = get_connection()
     c = conn.cursor()
     try:
-        c.execute("""
-            SELECT entry, direction, capital, sl, tp FROM trades WHERE id = ?
-        """, (id,))
+        c.execute(
+            """
+            SELECT entry, direction, capital, sl, tp
+            FROM trades WHERE id = ?
+        """,
+            (id,),
+        )
         row = c.fetchone()
         if not row:
             return jsonify({"error": "Trade not found"}), 404
 
         entry, direction, capital, sl, tp = row
-        capital = capital or 0
 
-        # Tính số pip từ entry đến exit
-        pip_diff = abs(exit_price - entry) * 10000  # 4-digit broker
+        profit, profit_pct = calculate_profit_and_pct(
+            exit_price=exit_price,
+            entry=entry,
+            direction=direction,
+            capital=capital,
+            sl=sl,
+            tp=tp,
+            risk_percent=0.01,       # có thể chuyển sang config
+            pip_multiplier=10000,    # 4-digit broker
+            pip_value_per_lot=10.0,  # $/pip cho 1 lot
+        )
 
-        # Tính lot size từ risk 1%
-        risk_percent = 0.01
-        risk_amount = capital * risk_percent
-        stop_pips = abs(entry - sl) * 10000
-        lot_size = risk_amount / (stop_pips * 10)  # 1 pip = $10 cho 1 lot
-
-        # Tính profit theo $
-        profit = pip_diff * lot_size * 10
-        if direction == "Short":
-            profit = -profit if exit_price > entry else profit
-        else:
-            profit = profit if exit_price > entry else -profit
-
-        profit_pct = (profit / capital) * 100 if capital > 0 else 0
-
-        # Cập nhật DB
-        c.execute("""
-            UPDATE trades 
+        c.execute(
+            """
+            UPDATE trades
             SET exit = ?, profit = ?, profit_pct = ?
             WHERE id = ?
-        """, (exit_price, round(profit, 2), round(profit_pct, 2), id))
+        """,
+            (exit_price, profit, profit_pct, id),
+        )
         conn.commit()
 
         c.execute("SELECT * FROM trades WHERE id = ?", (id,))
@@ -219,10 +295,12 @@ def update_exit(id):
     finally:
         conn.close()
 
+
 # === SERVE UPLOADS ===
 @trades_bp.route("/uploads/<filename>")
 def uploaded_file(filename):
     return send_from_directory(UPLOAD_FOLDER, filename)
+
 
 # === UPDATE REVIEW ===
 @trades_bp.patch("/trades/<int:id>")
@@ -233,19 +311,35 @@ def update_trade_review(id):
     note = data.get("note", "")
     lessons = data.get("lessons", "")
 
-    # Xử lý array
-    mistakes = json.dumps(data.get("mistakes", [])) if isinstance(data.get("mistakes"), list) else "[]"
-    psych_tags = json.dumps(data.get("psychological_tags", [])) if isinstance(data.get("psychological_tags"), list) else "[]"
+    mistakes = data.get("mistakes", [])
+    psych_tags = data.get("psychological_tags", [])
+
+    # Normalize list -> JSON string
+    mistakes_json = json.dumps(mistakes) if isinstance(mistakes, list) else "[]"
+    psych_tags_json = (
+        json.dumps(psych_tags) if isinstance(psych_tags, list) else "[]"
+    )
 
     conn = get_connection()
     c = conn.cursor()
     try:
-        c.execute("""
+        c.execute(
+            """
             UPDATE trades SET
                 grade = ?, mistakes = ?, exit_reason = ?,
                 note = ?, psychological_tags = ?, lessons = ?
             WHERE id = ?
-        """, (grade, mistakes, exit_reason, note, psych_tags, lessons, id))
+        """,
+            (
+                grade,
+                mistakes_json,
+                exit_reason,
+                note,
+                psych_tags_json,
+                lessons,
+                id,
+            ),
+        )
         conn.commit()
 
         c.execute("SELECT * FROM trades WHERE id = ?", (id,))

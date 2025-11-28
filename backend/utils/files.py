@@ -1,13 +1,17 @@
+# utils/files.py
 import os
 import uuid
-from werkzeug.utils import secure_filename
 from config import ALLOWED_EXTENSIONS, UPLOAD_FOLDER
+
 
 def allowed_file(filename: str) -> bool:
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
+
 def save_upload(file_storage):
-    """Lưu file upload và trả về tên file (hoặc None nếu không hợp lệ)."""
+    """
+    Lưu file upload vào UPLOAD_FOLDER và trả về tên file (hoặc None nếu không hợp lệ).
+    """
     if not file_storage or file_storage.filename == "":
         return None
 
