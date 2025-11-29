@@ -1,7 +1,8 @@
-import useTrades from "../hooks/useTrades";
-import useTimeFilter from "../hooks/useTimeFilter";
+import { useState } from "react";
 import useDashboardStats from "../hooks/useDashboardStats";
+import useTrades from "../hooks/useTrades";
 
+import GradeStats from "../components/dashboard/GradeStats";
 import MonthlyPnL from "../components/dashboard/MonthlyPnL";
 import DrawdownChart from "../components/dashboard/DrawdownChart";
 import { calcDrawdown } from "../utils/calcStats";
@@ -15,25 +16,52 @@ import TimeframeStats from "../components/dashboard/TimeframeStats";
 import SetupTable from "../components/dashboard/SetupTable";
 
 export default function Dashboard() {
-  // Dùng để lấy toàn bộ trades (header hiển thị số lệnh)
-  const allTrades = useTrades();
-  const { filter, setFilter, applyFilter } = useTimeFilter("Last 6M");
-  const trades = applyFilter(allTrades);
+  // Filter thời gian cho backend stats
+  const [filter, setFilter] = useState("Last 6M");
 
-  // Tất cả stats chính lấy từ backend
+  // Filter nâng cao
+  const [symbolFilter, setSymbolFilter] = useState("All");
+  const [setupFilter, setSetupFilter] = useState("All");
+  const [sessionFilter, setSessionFilter] = useState("All");
+  const [timeframeFilter, setTimeframeFilter] = useState("All");
+
+  // Dùng toàn bộ trades để lấy list value cho dropdown
+  const allTrades = useTrades();
+
+  // Tất cả stats chính lấy từ backend (đã filter theo thời gian + advanced filters)
   const {
     overview,
     equityCurve,
     bySetup,
     bySession,
     byTimeframe,
+    byGrade,
     monthlyPnl,
     mistakes,
     loading: statsLoading,
     error: statsError,
-  } = useDashboardStats(filter);
+  } = useDashboardStats(filter, {
+    symbol: symbolFilter,
+    setup: setupFilter,
+    session: sessionFilter,
+    timeframe: timeframeFilter,
+  });
 
-  // Loading state cho dashboard
+  // Lấy list giá trị duy nhất cho dropdown từ toàn bộ trades
+  const uniqueValues = (key) => {
+    const set = new Set();
+    allTrades.forEach((t) => {
+      if (t[key]) set.add(t[key]);
+    });
+    return Array.from(set).sort();
+  };
+
+  const symbols = uniqueValues("symbol");
+  const setups = uniqueValues("setup");
+  const sessions = uniqueValues("session");
+  const timeframes = uniqueValues("timeframe");
+
+  // Loading state
   if (statsLoading && !overview) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-[#0B0E11]">
@@ -60,11 +88,11 @@ export default function Dashboard() {
 
   // Map overview -> StatsCards
   const totalTrades = overview.total_trades;
-  const winrate = overview.winrate;            // %
-  const totalProfit = overview.net_profit;     // $
-  const avgR = overview.avg_r;                 // R
+  const winrate = overview.winrate; // %
+  const totalProfit = overview.net_profit; // $
+  const avgR = overview.avg_r; // R
   const expectancy = overview.expectancy_profit; // $/trade
-  const profitFactor = overview.profit_factor; // số
+  const profitFactor = overview.profit_factor; // số hoặc null
 
   // Map bySetup (array) -> object cho SetupTable & WinrateBySetup
   const statsBySetup = bySetup.reduce((acc, item) => {
@@ -101,6 +129,18 @@ export default function Dashboard() {
     return acc;
   }, {});
 
+  // Map byGrade -> { [grade]: { winrate, trades, avgR } }
+  const gradeMap = (byGrade || []).reduce((acc, item) => {
+    const key = item.key || "N/A";
+    const s = item.stats;
+    acc[key] = {
+      winrate: s.winrate,
+      trades: s.total_trades,
+      avgR: s.avg_r,
+    };
+    return acc;
+  }, {});
+
   return (
     <div className="min-h-screen bg-[#0B0E11] text-white">
       {/* Header */}
@@ -109,17 +149,15 @@ export default function Dashboard() {
           PRO TRADING DASHBOARD
         </h1>
         <p className="mt-3 text-gray-400 text-lg">
-          {trades.length} trades •{" "}
+          {totalTrades} trades •{" "}
           <span className="text-[#F0B90B] font-semibold">{filter}</span>
         </p>
         {statsError && (
-          <p className="mt-2 text-sm text-red-400">
-            Stats error: {statsError}
-          </p>
+          <p className="mt-2 text-sm text-red-400">Stats error: {statsError}</p>
         )}
       </div>
 
-      {/* FILTER BUTTONS */}
+      {/* FILTER BUTTONS (time) */}
       <div className="flex flex-wrap justify-center gap-3 max-w-4xl mx-auto px-4 mb-10">
         {["All Time", "Last 30D", "Last 6M", "YTD"].map((option) => (
           <button
@@ -134,6 +172,61 @@ export default function Dashboard() {
             {option}
           </button>
         ))}
+      </div>
+
+      {/* ADVANCED FILTERS: symbol / setup / session / timeframe */}
+      <div className="flex flex-wrap justify-center gap-3 max-w-5xl mx-auto px-4 mb-8">
+        <select
+          value={symbolFilter}
+          onChange={(e) => setSymbolFilter(e.target.value)}
+          className="px-4 py-2 bg-[#1A1D23] border border-[#2A2F36] rounded-xl text-sm text-gray-200"
+        >
+          <option value="All">All Symbols</option>
+          {symbols.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
+
+        <select
+          value={setupFilter}
+          onChange={(e) => setSetupFilter(e.target.value)}
+          className="px-4 py-2 bg-[#1A1D23] border border-[#2A2F36] rounded-xl text-sm text-gray-200"
+        >
+          <option value="All">All Setups</option>
+          {setups.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
+
+        <select
+          value={sessionFilter}
+          onChange={(e) => setSessionFilter(e.target.value)}
+          className="px-4 py-2 bg-[#1A1D23] border border-[#2A2F36] rounded-xl text-sm text-gray-200"
+        >
+          <option value="All">All Sessions</option>
+          {sessions.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
+
+        <select
+          value={timeframeFilter}
+          onChange={(e) => setTimeframeFilter(e.target.value)}
+          className="px-4 py-2 bg-[#1A1D23] border border-[#2A2F36] rounded-xl text-sm text-gray-200"
+        >
+          <option value="All">All Timeframes</option>
+          {timeframes.map((tf) => (
+            <option key={tf} value={tf}>
+              {tf}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-20 pb-20 space-y-12">
@@ -195,10 +288,7 @@ export default function Dashboard() {
               Drawdown Curve
             </h2>
             <div className="h-80">
-              <DrawdownChart
-                drawdowns={drawdowns}
-                maxDrawdown={maxDrawdown}
-              />
+              <DrawdownChart drawdowns={drawdowns} maxDrawdown={maxDrawdown} />
             </div>
           </div>
         </div>
@@ -222,6 +312,16 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+
+        {/* GRADE / PROCESS QUALITY */}
+        {Object.keys(gradeMap).length > 0 && (
+          <div className="bg-[#1A1D23] border border-[#2A2F36] rounded-3xl p-8 shadow-2xl">
+            <h2 className="text-xl font-bold text-teal-400 mb-6">
+              Process Quality by Grade
+            </h2>
+            <GradeStats data={gradeMap} />
+          </div>
+        )}
 
         {/* SETUP TABLE DETAIL */}
         <div className="bg-[#1A1D23] border border-[#2A2F36] rounded-3xl p-8 shadow-2xl">

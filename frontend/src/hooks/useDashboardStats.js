@@ -1,39 +1,15 @@
+// src/hooks/useDashboardStats.js
 import { useEffect, useState } from "react";
 import { API_BASE_URL } from "../config/api";
+import { getDateRangeFromFilter } from "./useTimeFilter";
 
-function formatDate(date) {
-  return date.toISOString().slice(0, 10); // YYYY-MM-DD
-}
-
-function getDateRange(filter) {
-  const today = new Date();
-  const end = formatDate(today);
-  let start = null;
-
-  if (filter === "Last 30D") {
-    const d = new Date();
-    d.setDate(d.getDate() - 30);
-    start = formatDate(d);
-  } else if (filter === "Last 6M") {
-    const d = new Date();
-    d.setMonth(d.getMonth() - 6);
-    start = formatDate(d);
-  } else if (filter === "YTD") {
-    const d = new Date(today.getFullYear(), 0, 1);
-    start = formatDate(d);
-  } else if (filter === "All Time") {
-    start = null;
-  }
-
-  return { from: start, to: end };
-}
-
-export default function useDashboardStats(filter) {
+export default function useDashboardStats(timeFilter, extraFilters = {}) {
   const [overview, setOverview] = useState(null);
   const [equityCurve, setEquityCurve] = useState([]);
   const [bySetup, setBySetup] = useState([]);
   const [bySession, setBySession] = useState([]);
   const [byTimeframe, setByTimeframe] = useState([]);
+  const [byGrade, setByGrade] = useState([]);
   const [monthlyPnl, setMonthlyPnl] = useState([]);
   const [mistakes, setMistakes] = useState({});
   const [loading, setLoading] = useState(true);
@@ -41,17 +17,23 @@ export default function useDashboardStats(filter) {
 
   useEffect(() => {
     const controller = new AbortController();
-    const { from, to } = getDateRange(filter);
 
+    const { from, to } = getDateRangeFromFilter(timeFilter);
     const params = new URLSearchParams();
     if (from) params.append("from", from);
-    if (to && filter !== "All Time") params.append("to", to);
+    if (to) params.append("to", to);
+
+    const { symbol, setup, session, timeframe } = extraFilters || {};
+    if (symbol && symbol !== "All") params.append("symbol", symbol);
+    if (setup && setup !== "All") params.append("setup", setup);
+    if (session && session !== "All") params.append("session", session);
+    if (timeframe && timeframe !== "All") params.append("timeframe", timeframe);
+
     const query = params.toString() ? `?${params.toString()}` : "";
 
     async function fetchStats() {
       setLoading(true);
       setError(null);
-
       try {
         const [
           overviewRes,
@@ -61,6 +43,7 @@ export default function useDashboardStats(filter) {
           tfRes,
           monthlyRes,
           mistakesRes,
+          gradeRes,
         ] = await Promise.all([
           fetch(`${API_BASE_URL}/api/stats/overview${query}`, {
             signal: controller.signal,
@@ -83,9 +66,14 @@ export default function useDashboardStats(filter) {
           fetch(`${API_BASE_URL}/api/stats/mistakes${query}`, {
             signal: controller.signal,
           }),
+          fetch(`${API_BASE_URL}/api/stats/by-grade${query}`, {
+            signal: controller.signal,
+          }),
         ]);
 
-        if (!overviewRes.ok) throw new Error("Failed to load overview stats");
+        if (!overviewRes.ok) {
+          throw new Error("Failed to load overview stats");
+        }
 
         const [
           overviewData,
@@ -95,6 +83,7 @@ export default function useDashboardStats(filter) {
           tfData,
           monthlyData,
           mistakesData,
+          gradeData,
         ] = await Promise.all([
           overviewRes.json(),
           equityRes.json(),
@@ -103,6 +92,7 @@ export default function useDashboardStats(filter) {
           tfRes.json(),
           monthlyRes.json(),
           mistakesRes.json(),
+          gradeRes.json(),
         ]);
 
         setOverview(overviewData);
@@ -112,6 +102,7 @@ export default function useDashboardStats(filter) {
         setByTimeframe(tfData || []);
         setMonthlyPnl(monthlyData || []);
         setMistakes(mistakesData || {});
+        setByGrade(gradeData || []);
       } catch (err) {
         if (err.name !== "AbortError") {
           console.error("Dashboard stats error:", err);
@@ -125,7 +116,13 @@ export default function useDashboardStats(filter) {
     fetchStats();
 
     return () => controller.abort();
-  }, [filter]);
+  }, [
+    timeFilter,
+    extraFilters.symbol,
+    extraFilters.setup,
+    extraFilters.session,
+    extraFilters.timeframe,
+  ]);
 
   return {
     overview,
@@ -133,6 +130,7 @@ export default function useDashboardStats(filter) {
     bySetup,
     bySession,
     byTimeframe,
+    byGrade,
     monthlyPnl,
     mistakes,
     loading,

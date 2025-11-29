@@ -8,7 +8,6 @@ import {
   FiChevronLeft,
   FiChevronRight,
   FiTarget, // Icon mới cho Backtest (siêu hợp!)
-  FiPieChart, // Dành cho Statistics (sau này thêm)
   FiSettings, // Dự phòng
 } from "react-icons/fi";
 import { motion } from "framer-motion";
@@ -23,7 +22,6 @@ export default function Sidebar() {
     { to: "/dashboard", icon: FiBarChart2, label: "Dashboard" },
     { to: "/playbook", icon: FiSettings, label: "Playbook / System" },
     { to: "/backtest", icon: FiTarget, label: "Backtest Tool", badge: "NEW" }, // Đã thêm + badge nổi bật
-    { to: "/statistics", icon: FiPieChart, label: "Statistics" },
     { to: "/monthly", icon: FiCalendar, label: "Monthly Review" },
     // { to: "/setups", icon: FiZap, label: "Setup Library" }, // tương lai
     // { to: "/journal", icon: FiEdit3, label: "Journal" },

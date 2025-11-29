@@ -183,6 +183,50 @@ def upload_chart_after(trade_id):
     finally:
         conn.close()
 
+# === DELETE CHART AFTER ===
+@trades_bp.delete("/trades/<int:trade_id>/chart-after")
+def delete_chart_after(trade_id):
+    """
+    Xóa chart_after của trade.
+    - Xóa file trên server
+    - Cập nhật DB: chart_after = NULL
+    - Trả về trade đã cập nhật
+    """
+    conn = get_connection()
+    c = conn.cursor()
+    try:
+        # Lấy chart_after hiện tại
+        c.execute("SELECT chart_after FROM trades WHERE id = ?", (trade_id,))
+        row = c.fetchone()
+        if not row:
+            return jsonify({"error": "Trade not found"}), 404
+
+        current_filename = row[0]
+
+        # Xóa file nếu tồn tại
+        if current_filename:
+            filepath = os.path.join(UPLOAD_FOLDER, current_filename)
+            try:
+                if os.path.exists(filepath):
+                    os.remove(filepath)
+            except Exception as e:
+                print(f"[DELETE CHART_AFTER] Cannot remove file {current_filename}: {e}")
+
+        # Cập nhật DB
+        c.execute("UPDATE trades SET chart_after = NULL WHERE id = ?", (trade_id,))
+        conn.commit()
+
+        # Trả về trade mới
+        c.execute("SELECT * FROM trades WHERE id = ?", (trade_id,))
+        updated_row = c.fetchone()
+        return jsonify(dict_trade(updated_row)), 200
+
+    except Exception as e:
+        conn.rollback()
+        print(f"[DELETE CHART_AFTER ERROR] {e}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        conn.close()
 
 # === DELETE TRADE ===
 @trades_bp.delete("/trades/<int:id>")

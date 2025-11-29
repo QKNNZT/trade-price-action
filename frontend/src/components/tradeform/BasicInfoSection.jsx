@@ -9,9 +9,12 @@ export default function BasicInfoSection({
   symbolOptions,
   setupOptions,
   onSetupSelect,
+  symbolInputRef,   // <-- nhận ref
 }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+
+      {/* DATE */}
       <div>
         <label className="text-xs font-semibold text-gray-300">Date</label>
         <input
@@ -21,33 +24,24 @@ export default function BasicInfoSection({
           value={form.date || ""}
           onChange={(e) => updateForm({ date: e.target.value })}
         />
-        {!form.date && (
-          <p className="text-red-400 text-xs mt-1 flex items-center gap-1">
-            <span className="w-1 h-1 bg-red-400 rounded-full"></span>
-            Bắt buộc
-          </p>
-        )}
+        {/* ... thông báo lỗi */}
       </div>
 
+      {/* SYMBOL – REF ĐÚNG Ở ĐÂY */}
       <div>
         <label className="text-xs font-semibold text-gray-300">Symbol</label>
         <CreatableSelect
+          ref={symbolInputRef}               // <-- focus vào Symbol
           styles={darkSelect}
           options={symbolOptions}
-          value={
-            form.symbol ? { value: form.symbol, label: form.symbol } : null
-          }
+          value={form.symbol ? { value: form.symbol, label: form.symbol } : null}
           onChange={(opt) => updateForm({ symbol: opt?.value || "" })}
           placeholder="EUR/USD, XAU/USD..."
         />
-        {!form.symbol && (
-          <p className="text-red-400 text-xs mt-1 flex items-center gap-1">
-            <span className="w-1 h-1 bg-red-400 rounded-full"></span>
-            Bắt buộc
-          </p>
-        )}
+        {/* ... thông báo lỗi */}
       </div>
 
+      {/* SETUP */}
       <div>
         <label className="text-xs font-semibold text-gray-300">Setup</label>
         <CreatableSelect
@@ -55,16 +49,18 @@ export default function BasicInfoSection({
           options={setupOptions}
           value={form.setup ? { value: form.setup, label: form.setup } : null}
           onChange={onSetupSelect}
-          placeholder="Chọn setup theo Playbook..."
+          placeholder="Chọn setup..."
         />
       </div>
 
+      {/* DIRECTION – THÊM type="button" */}
       <div>
         <label className="text-xs font-semibold text-gray-300 block mb-2">
           Direction
         </label>
         <div className="flex gap-3">
           <button
+            type="button"                     // NGĂN SUBMIT
             onClick={() => updateForm({ direction: "Long" })}
             className={`flex-1 py-3 rounded-lg font-bold transition-all flex items-center justify-center gap-2 ${
               form.direction === "Long"
@@ -74,7 +70,9 @@ export default function BasicInfoSection({
           >
             <FiTrendingUp size={18} /> LONG
           </button>
+
           <button
+            type="button"                     // NGĂN SUBMIT
             onClick={() => updateForm({ direction: "Short" })}
             className={`flex-1 py-3 rounded-lg font-bold transition-all flex items-center justify-center gap-2 ${
               form.direction === "Short"
@@ -85,12 +83,7 @@ export default function BasicInfoSection({
             <FiTrendingDown size={18} /> SHORT
           </button>
         </div>
-        {!form.direction && (
-          <p className="text-red-400 text-xs mt-2 flex items-center gap-1">
-            <span className="w-1 h-1 bg-red-400 rounded-full"></span>
-            Chọn Long hoặc Short
-          </p>
-        )}
+        {/* ... thông báo lỗi */}
       </div>
     </div>
   );

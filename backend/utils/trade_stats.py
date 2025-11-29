@@ -88,17 +88,22 @@ def compute_max_drawdown_from_curve(curve: List[Dict[str, Any]]) -> float:
     return round(max_dd, 2)
 
 
-def compute_overview_stats(trades: List[Dict[str, Any]], risk_percent: float = RISK_PERCENT_DEFAULT) -> Dict[str, Any]:
+def compute_overview_stats(
+    trades: List[Dict[str, Any]],
+    risk_percent: float = RISK_PERCENT_DEFAULT,
+) -> Dict[str, Any]:
     """
     Tính các chỉ số tổng quan:
       - total_trades, win_trades, loss_trades, breakeven_trades
       - winrate (%)
       - net_profit ($), avg_profit ($)
-      - net_r, avg_r, expectancy_r
-      - expectancy_profit ($/trade)
-      - profit_factor (null nếu "vô cực")
+      - net_profit_pct (%), avg_profit_pct (%)
+      - net_r, avg_r
+      - expectancy_r, expectancy_profit ($/trade)
+      - profit_factor (có thể là None nếu 'vô cực')
       - max_drawdown_r
     """
+    # Không có trade nào
     if not trades:
         return {
             "total_trades": 0,
@@ -108,14 +113,17 @@ def compute_overview_stats(trades: List[Dict[str, Any]], risk_percent: float = R
             "winrate": 0.0,
             "net_profit": 0.0,
             "avg_profit": 0.0,
+            "net_profit_pct": 0.0,
+            "avg_profit_pct": 0.0,
             "net_r": 0.0,
             "avg_r": 0.0,
             "expectancy_r": 0.0,
             "expectancy_profit": 0.0,
-            "profit_factor": None,
+            "profit_factor": 0.0,
             "max_drawdown_r": 0.0,
         }
 
+    # Chỉ tính với những lệnh đã đóng (có profit)
     closed = [t for t in trades if t.get("profit") is not None]
     if not closed:
         return {
@@ -126,22 +134,28 @@ def compute_overview_stats(trades: List[Dict[str, Any]], risk_percent: float = R
             "winrate": 0.0,
             "net_profit": 0.0,
             "avg_profit": 0.0,
+            "net_profit_pct": 0.0,
+            "avg_profit_pct": 0.0,
             "net_r": 0.0,
             "avg_r": 0.0,
             "expectancy_r": 0.0,
             "expectancy_profit": 0.0,
-            "profit_factor": None,
+            "profit_factor": 0.0,
             "max_drawdown_r": 0.0,
         }
 
-    r_values = []
-    profits = []
+    r_values: List[float] = []
+    profits: List[float] = []
+    pct_values: List[float] = []
 
     for t in closed:
         r = compute_r_multiple(t, risk_percent)
         p = _safe_float(t.get("profit"), 0.0)
+        pct = _safe_float(t.get("profit_pct"), 0.0)
+
         r_values.append(r)
         profits.append(p)
+        pct_values.append(pct)
 
     total_trades = len(r_values)
     win_trades = len([r for r in r_values if r > 0])
@@ -152,6 +166,9 @@ def compute_overview_stats(trades: List[Dict[str, Any]], risk_percent: float = R
 
     net_profit = sum(profits)
     avg_profit = net_profit / total_trades if total_trades > 0 else 0.0
+
+    net_profit_pct = sum(pct_values)
+    avg_profit_pct = net_profit_pct / total_trades if total_trades > 0 else 0.0
 
     net_r = sum(r_values)
     avg_r = net_r / total_trades if total_trades > 0 else 0.0
@@ -169,23 +186,29 @@ def compute_overview_stats(trades: List[Dict[str, Any]], risk_percent: float = R
 
     expectancy_r = p_win * avg_win_r - p_loss * avg_loss_r
 
-    # Expectancy theo $ / lệnh
+    # Expectancy theo $ / trade
     expectancy_profit = net_profit / total_trades if total_trades > 0 else 0.0
 
-    # Profit factor
+    # Profit factor: nếu không có loss nhưng có profit -> "vô cực" => để None (null trong JSON)
     gross_profit = sum(p for p in profits if p > 0)
     gross_loss = abs(sum(p for p in profits if p < 0))
+
     if gross_loss > 0:
         profit_factor = gross_profit / gross_loss
     elif gross_profit > 0:
-        # "vô cực" -> cho về None, JSON sẽ là null
-        profit_factor = None
+        profit_factor = None  # biểu diễn PF = ∞
     else:
         profit_factor = 0.0
 
-    # Max drawdown từ equity curve (theo R)
+    # Max drawdown theo R từ equity curve
     curve = compute_equity_curve(trades, risk_percent)
     max_dd_r = compute_max_drawdown_from_curve(curve)
+
+    # Chuẩn bị giá trị trả về JSON
+    if profit_factor is None:
+        profit_factor_json = None  # sẽ thành null trong JSON
+    else:
+        profit_factor_json = round(profit_factor, 2)
 
     return {
         "total_trades": total_trades,
@@ -195,15 +218,15 @@ def compute_overview_stats(trades: List[Dict[str, Any]], risk_percent: float = R
         "winrate": round(winrate, 2),
         "net_profit": round(net_profit, 2),
         "avg_profit": round(avg_profit, 2),
+        "net_profit_pct": round(net_profit_pct, 2),
+        "avg_profit_pct": round(avg_profit_pct, 2),
         "net_r": round(net_r, 2),
         "avg_r": round(avg_r, 2),
         "expectancy_r": round(expectancy_r, 3),
         "expectancy_profit": round(expectancy_profit, 2),
-        "profit_factor": round(profit_factor, 2) if isinstance(profit_factor, (int, float)) else None,
+        "profit_factor": profit_factor_json,  # KHÔNG còn Infinity
         "max_drawdown_r": max_dd_r,
     }
-
-
 
 
 def compute_grouped_stats(
@@ -304,3 +327,81 @@ def compute_mistakes_counts(trades: List[Dict[str, Any]]):
             counts[label] = counts.get(label, 0) + 1
 
     return counts
+
+def _closed_trades(trades: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Chỉ lấy trade đã đóng (có profit)."""
+    return [t for t in trades if t.get("profit") is not None]
+
+
+def _summarize_trade(t: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """Rút gọn trade để trả về API review."""
+    if not t:
+        return None
+    return {
+        "id": t.get("id"),
+        "date": t.get("date"),
+        "symbol": t.get("symbol"),
+        "setup": t.get("setup"),
+        "direction": t.get("direction"),
+        "session": t.get("session"),
+        "timeframe": t.get("timeframe"),
+        "profit": round(_safe_float(t.get("profit"), 0.0), 2),
+        "profit_pct": round(_safe_float(t.get("profit_pct"), 0.0), 2),
+        "rr": round(_safe_float(t.get("rr"), 0.0), 2),
+    }
+
+
+def compute_best_trade(trades: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    closed = _closed_trades(trades)
+    if not closed:
+        return None
+    best = max(closed, key=lambda t: _safe_float(t.get("profit"), 0.0))
+    return _summarize_trade(best)
+
+
+def compute_worst_trade(trades: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    closed = [t for t in _closed_trades(trades) if _safe_float(t.get("profit"), 0.0) < 0]
+    if not closed:
+        return None
+    worst = min(closed, key=lambda t: _safe_float(t.get("profit"), 0.0))
+    return _summarize_trade(worst)
+
+
+def compute_win_streak(trades: List[Dict[str, Any]]) -> int:
+    """
+    Chuỗi thắng liên tiếp dài nhất (tính theo profit > 0),
+    sort theo date tăng dần.
+    """
+    closed = sorted(_closed_trades(trades), key=lambda t: t.get("date") or "")
+    current = 0
+    best = 0
+    for t in closed:
+        profit = _safe_float(t.get("profit"), 0.0)
+        if profit > 0:
+            current += 1
+            best = max(best, current)
+        elif profit < 0:
+            current = 0
+        # hòa (0) thì không reset, không + streak
+    return best
+
+
+def compute_review_package(trades: List[Dict[str, Any]], risk_percent: float = RISK_PERCENT_DEFAULT) -> Dict[str, Any]:
+    """
+    Gói dữ liệu cho trang Review (tuần / tháng):
+      - overview: dùng lại compute_overview_stats
+      - best_trade
+      - worst_trade
+      - win_streak
+    """
+    overview = compute_overview_stats(trades, risk_percent)
+    best = compute_best_trade(trades)
+    worst = compute_worst_trade(trades)
+    streak = compute_win_streak(trades)
+
+    return {
+        "overview": overview,
+        "best_trade": best,
+        "worst_trade": worst,
+        "win_streak": streak,
+    }

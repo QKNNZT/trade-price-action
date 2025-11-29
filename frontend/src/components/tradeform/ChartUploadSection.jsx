@@ -5,21 +5,17 @@ import { FiUpload, FiX } from "react-icons/fi";
 export default function ChartUploadSection({ form, updateForm }) {
   const [preview, setPreview] = useState(null);
 
-  const handleBeforeImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      updateForm({ chart_before: file });
-      const url = URL.createObjectURL(file);
+  // Sync preview với form.chart_before
+  useEffect(() => {
+    if (form.chart_before) {
+      const url = URL.createObjectURL(form.chart_before);
       setPreview(url);
+    } else {
+      setPreview(null);
     }
-  };
+  }, [form.chart_before]);
 
-  const removeBeforeImage = () => {
-    updateForm({ chart_before: null });
-    setPreview(null);
-  };
-
-  // cleanup URL để tránh memory leak
+  // Cleanup URL cũ khi preview thay đổi
   useEffect(() => {
     return () => {
       if (preview) {
@@ -28,6 +24,22 @@ export default function ChartUploadSection({ form, updateForm }) {
     };
   }, [preview]);
 
+  const handleBeforeImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      updateForm({ chart_before: file });
+      // preview sẽ tự động cập nhật qua useEffect trên
+    }
+  };
+
+  const removeBeforeImage = (e) => {
+    e.stopPropagation(); // ngăn click vào label
+    updateForm({ chart_before: null });
+    // reset file input
+    const input = document.querySelector('input[name="chart_before"]');
+    if (input) input.value = "";
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
       {/* CHART BEFORE */}
@@ -35,7 +47,10 @@ export default function ChartUploadSection({ form, updateForm }) {
         <label className="text-xs font-bold block mb-3 text-gray-300">
           Chart Before (Setup)
         </label>
-        <label className="block border-2 border-dashed border-gray-600 rounded-2xl p-8 text-center cursor-pointer bg-[#161b22] hover:border-blue-400 transition min-h-64 flex flex-col justify-center">
+        <label
+          className="block border-2 border-dashed border-gray-600 rounded-2xl p-8 text-center cursor-pointer bg-[#161b22] hover:border-blue-400 transition min-h-64 flex flex-col justify-center"
+          onClick={(e) => preview && e.preventDefault()} // ngăn mở file nếu đã có ảnh
+        >
           {preview ? (
             <div className="relative">
               <img
