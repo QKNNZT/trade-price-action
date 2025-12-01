@@ -3,49 +3,73 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { PLAYBOOK_SETUPS } from "../config/playbookSetups";
 import { API_BASE_URL } from "../config/api";
-import { Copy, CheckSquare, Square, RotateCcw, Sparkles } from "lucide-react";
+import {
+  Copy,
+  CheckSquare,
+  Square,
+  RotateCcw,
+  Sparkles,
+  TrendingUp,
+  AlertCircle,
+} from "lucide-react";
 
 const READY_THRESHOLD = 85;
 const ALMOST_THRESHOLD = 70;
 
-export default function PlaybookPage() {
+export default function PlaybookPage({ theme = "dark" }) {
+  const isDark = theme === "dark";
   const location = useLocation();
 
-  // === SETUP SELECTION ===
   const [selectedSetupId, setSelectedSetupId] = useState(
     () => PLAYBOOK_SETUPS[0]?.id ?? null
   );
-
-  // === CHECKLIST STATES ===
   const [universalChecks, setUniversalChecks] = useState({});
   const [setupChecks, setSetupChecks] = useState({});
-
-  // === TRADES (lấy từ backend) ===
   const [trades, setTrades] = useState([]);
   const [loadingTrades, setLoadingTrades] = useState(true);
 
-  // Khi đổi setup → reset checklist
+  // ──────────────────────────────────────────────────────────────
+  // THEME COLORS – PRO + BRAND #F0B90B
+  // ──────────────────────────────────────────────────────────────
+  const colors = {
+    bg: isDark
+      ? "bg-gradient-to-br from-gray-900 via-[#0a0d14] to-gray-900"
+      : "bg-gradient-to-br from-gray-50 via-white to-gray-100",
+    text: isDark ? "text-white" : "text-gray-900",
+    textMuted: isDark ? "text-gray-400" : "text-gray-600",
+    card: isDark
+      ? "bg-gray-800/90 backdrop-blur-md"
+      : "bg-white/90 backdrop-blur-md",
+    cardBorder: isDark ? "border-gray-700" : "border-gray-200",
+    accent: "#F0B90B",
+    accentHover: isDark ? "#f59e0b" : "#d97706",
+    success: isDark ? "text-emerald-400" : "text-emerald-600",
+    warning: isDark ? "text-orange-400" : "text-orange-600",
+    danger: isDark ? "text-rose-400" : "text-rose-600",
+    badgeBg: isDark ? "bg-gray-800" : "bg-gray-100",
+    progressTrack: isDark ? "bg-gray-700/60" : "bg-gray-200",
+    dividerBorder: isDark ? "border-gray-700/60" : "border-gray-200",
+    checklistHover: isDark ? "hover:bg-white/5" : "hover:bg-gray-100",
+  };
+
+  // ──────────────────────────────────────────────────────────────
+  // EFFECTS
+  // ──────────────────────────────────────────────────────────────
   useEffect(() => {
     setUniversalChecks({});
     setSetupChecks({});
   }, [selectedSetupId]);
 
-  // Đọc query ?setup=... để chọn đúng setup khi nhảy từ TradeLog
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const setupName = params.get("setup");
-
     if (!setupName) return;
-
     const found = PLAYBOOK_SETUPS.find(
       (s) => s.name.toLowerCase() === setupName.toLowerCase()
     );
-    if (found) {
-      setSelectedSetupId(found.id);
-    }
+    if (found) setSelectedSetupId(found.id);
   }, [location.search]);
 
-  // Fetch trades từ Flask
   useEffect(() => {
     const fetchTrades = async () => {
       try {
@@ -54,16 +78,17 @@ export default function PlaybookPage() {
         const data = await res.json();
         setTrades(Array.isArray(data) ? data : []);
       } catch (err) {
-        console.error("Error fetching trades for Playbook:", err);
+        console.error("Error fetching trades:", err);
       } finally {
         setLoadingTrades(false);
       }
     };
-
     fetchTrades();
   }, []);
 
-  // === DERIVED DATA ===
+  // ──────────────────────────────────────────────────────────────
+  // DERIVED DATA
+  // ──────────────────────────────────────────────────────────────
   const selectedSetup = useMemo(
     () => PLAYBOOK_SETUPS.find((s) => s.id === selectedSetupId) ?? null,
     [selectedSetupId]
@@ -72,44 +97,27 @@ export default function PlaybookPage() {
   const uniLines = useMemo(
     () =>
       selectedSetup?.universal_checklist
-        ? selectedSetup.universal_checklist
-            .split("\n")
-            .map((l) => l.trim())
-            .filter(Boolean)
-        : [],
+        ?.split("\n")
+        .map((l) => l.trim())
+        .filter(Boolean) || [],
     [selectedSetup]
   );
-
   const setupLines = useMemo(
     () =>
       selectedSetup?.setup_checklist
-        ? selectedSetup.setup_checklist
-            .split("\n")
-            .map((l) => l.trim())
-            .filter(Boolean)
-        : [],
+        ?.split("\n")
+        .map((l) => l.trim())
+        .filter(Boolean) || [],
     [selectedSetup]
   );
 
-  const uniDone = useMemo(
-    () => Object.values(universalChecks).filter(Boolean).length,
-    [universalChecks]
-  );
+  const uniDone = Object.values(universalChecks).filter(Boolean).length;
+  const setupDone = Object.values(setupChecks).filter(Boolean).length;
+  const setupPercent =
+    setupLines.length > 0
+      ? Math.round((setupDone / setupLines.length) * 100)
+      : 0;
 
-  const setupDone = useMemo(
-    () => Object.values(setupChecks).filter(Boolean).length,
-    [setupChecks]
-  );
-
-  const setupPercent = useMemo(
-    () =>
-      setupLines.length > 0
-        ? Math.round((setupDone / setupLines.length) * 100)
-        : 0,
-    [setupDone, setupLines.length]
-  );
-
-  // 👉 Trades thuộc setup đang chọn
   const setupTrades = useMemo(() => {
     if (!selectedSetup) return [];
     return trades.filter(
@@ -119,7 +127,7 @@ export default function PlaybookPage() {
 
   const setupStats = useMemo(() => {
     const total = setupTrades.length;
-    if (total === 0) {
+    if (total === 0)
       return {
         total: 0,
         wins: 0,
@@ -129,146 +137,180 @@ export default function PlaybookPage() {
         avgR: 0,
         expectancy: 0,
       };
-    }
-
     const wins = setupTrades.filter((t) => t.profit > 0).length;
     const losses = setupTrades.filter((t) => t.profit < 0).length;
-    const be = setupTrades.filter((t) => t.profit === 0).length;
-
+    const be = total - wins - losses;
     const winrate = (wins / total) * 100;
-    const avgR =
-      setupTrades.reduce((s, t) => s + (t.rr || 0), 0) / total;
+    const avgR = setupTrades.reduce((s, t) => s + (t.rr || 0), 0) / total;
     const expectancy =
       setupTrades.reduce((s, t) => s + (t.profit || 0), 0) / total;
-
     return { total, wins, losses, be, winrate, avgR, expectancy };
   }, [setupTrades]);
 
-  // Toggle functions
-  const toggleUniversal = (idx) => {
+  // ──────────────────────────────────────────────────────────────
+  // TOGGLE & COPY
+  // ──────────────────────────────────────────────────────────────
+  const toggleUniversal = (idx) =>
     setUniversalChecks((prev) => ({ ...prev, [idx]: !prev[idx] }));
-  };
-
-  const toggleSetup = (idx) => {
+  const toggleSetup = (idx) =>
     setSetupChecks((prev) => ({ ...prev, [idx]: !prev[idx] }));
-  };
 
-  // Copy to clipboard
   const copyToClipboard = (text) => {
     if (!text) return;
     navigator.clipboard.writeText(text.trim());
-    alert("Đã copy checklist vào clipboard!");
+    alert("Đã copy checklist!");
   };
 
   if (!selectedSetup) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-950">
-        <div className="text-center text-slate-400 text-lg">
-          Đang tải Playbook...
-        </div>
+      <div
+        className={`min-h-screen ${colors.bg} ${colors.text} flex items-center justify-center`}
+      >
+        <div className="text-xl animate-pulse">Đang tải Playbook...</div>
       </div>
     );
   }
 
+  // ──────────────────────────────────────────────────────────────
+  // RENDER
+  // ──────────────────────────────────────────────────────────────
   return (
     <div
-      className="page playbook-page min-h-screen bg-slate-950 text-slate-50 font-mono"
-      style={{
-        fontFamily:
-          'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
-        fontFeatureSettings: '"tnum", "liga"',
-      }}
+      className={`min-h-screen ${colors.bg} ${colors.text} font-sans transition-colors duration-300`}
     >
-      <div className="max-w-8xl mx-auto px-4 py-6 lg:py-8 space-y-6">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-6 lg:py-8 space-y-8">
         {/* HEADER */}
-        <header className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <header className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-slate-900/70 px-3 py-1 text-xs font-medium text-slate-300">
-              <Sparkles size={14} className="text-yellow-400" />
-              <span>Trading OS · AI Playbook 2025</span>
+            <div
+              className={`inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-medium ${
+                isDark
+                  ? "bg-gray-800 text-gray-300"
+                  : "bg-gray-200 text-gray-700"
+              }`}
+            >
+              <Sparkles
+                size={14}
+                className={`${isDark ? "text-yellow-400" : "text-amber-600"}`}
+              />
+              Trading OS · AI Playbook 2025
             </div>
-            <h1 className="mt-3 text-3xl lg:text-4xl font-bold tracking-tight text-slate-50">
+            <h1 className="mt-3 text-4xl font-bold tracking-tight">
               Playbook / System
             </h1>
-            <p className="mt-2 text-base text-slate-400 max-w-xl">
-              Mở tab này trước phiên, tick checklist và ra quyết định trong dưới{" "}
-              <span className="font-semibold text-slate-100">15 giây</span>.
+            <p className={`mt-2 text-lg ${colors.textMuted} max-w-2xl`}>
+              Mở tab này trước phiên, tick checklist và ra quyết định trong{" "}
+              <span className="font-bold text-yellow-500">15 giây</span>.
             </p>
           </div>
 
-          {/* Quick status */}
-          <div className="rounded-3xl border border-emerald-400/40 bg-gradient-to-br from-emerald-500/10 via-slate-900/80 to-slate-900/90 px-4 py-3 text-sm flex flex-col gap-1">
-            <div className="flex items-center justify-between">
-              <span className="text-slate-300">Tiến độ setup hiện tại</span>
-              <span className="text-xs text-slate-400">
-                {selectedSetup.name}
+          {/* PROGRESS CARD */}
+          <div
+            className={`rounded-2xl ${
+              isDark
+                ? "bg-gradient-to-br from-emerald-600/20 to-teal-700/20 border-emerald-500/30"
+                : "bg-gradient-to-br from-emerald-100 to-teal-100 border-emerald-300"
+            } border p-5 shadow-xl`}
+          >
+            <div className=" flex items-center justify-between">
+              <span className={`${colors.textMuted} text-sm`}>
+                Tiến độ setup
+              </span>
+              <span className="p-1 text-xs font-medium">{selectedSetup.name}</span>
+            </div>
+            <div className="mt-2 flex items-center gap-3">
+              <div className="flex-1">
+                <div
+                  className={`h-3 ${colors.progressTrack} rounded-full overflow-hidden`}
+                >
+                  <div
+                    className={`h-full transition-all duration-500 rounded-full ${
+                      setupPercent >= READY_THRESHOLD
+                        ? "bg-emerald-500"
+                        : setupPercent >= ALMOST_THRESHOLD
+                        ? "bg-orange-500"
+                        : "bg-gray-500"
+                    }`}
+                    style={{ width: `${setupPercent}%` }}
+                  />
+                </div>
+              </div>
+              <span className="text-2xl font-bold text-yellow-500">
+                {setupPercent}%
               </span>
             </div>
-            <div className="flex items-center justify-between mt-1">
-              <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-semibold text-yellow-400">
-                  {setupPercent}%
-                </span>
-                <span className="text-xs text-slate-400">
-                  ({setupDone}/{setupLines.length} điều kiện)
-                </span>
-              </div>
-              {renderStatusBadge(setupPercent)}
+            <div className={`py-1 text-xs ${colors.textMuted}`}>
+              {setupDone}/{setupLines.length} điều kiện
             </div>
+            {renderStatusBadge(setupPercent, colors, isDark)}
           </div>
         </header>
 
         {/* LAYOUT */}
-        <div className="grid gap-6 lg:grid-cols-12 items-start">
+        <div className="grid gap-8 lg:grid-cols-12">
           {/* SIDEBAR */}
           <aside className="lg:col-span-4">
-            <div className="relative rounded-3xl border border-slate-700/80 bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 shadow-[0_0_60px_rgba(15,23,42,0.8)] overflow-hidden">
-              <div className="border-b border-slate-800/80 bg-gradient-to-r from-yellow-400 via-amber-500 to-orange-500 px-5 py-4">
+            <div
+              className={`rounded-3xl border ${colors.cardBorder} ${colors.card} shadow-2xl overflow-hidden`}
+            >
+              <div
+                className={`px-5 py-4 ${
+                  isDark
+                    ? "bg-gradient-to-r from-yellow-500 to-amber-600"
+                    : "bg-gradient-to-r from-amber-500 to-orange-600"
+                }`}
+              >
                 <h2 className="text-lg font-bold text-black">Setups</h2>
-                <p className="mt-1 text-xs font-medium text-black/70">
-                  Chọn setup để load checklist & rule chi tiết.
-                </p>
+                <p className="text-xs text-black/80">Chọn để load checklist</p>
               </div>
-              <ul className="p-4 space-y-3 max-h-[72vh] overflow-y-auto">
+              <ul className="p-4 space-y-3 max-h-[70vh] overflow-y-auto">
                 {PLAYBOOK_SETUPS.map((s) => {
                   const isActive = s.id === selectedSetupId;
                   return (
                     <li
                       key={s.id}
                       onClick={() => setSelectedSetupId(s.id)}
-                      className={[
-                        "group cursor-pointer rounded-2xl border px-4 py-3 text-sm transition-all duration-200",
-                        "hover:-translate-y-0.5 hover:shadow-lg",
+                      className={`group cursor-pointer rounded-2xl border p-4 transition-all duration-300 hover:shadow-xl ${
                         isActive
-                          ? "border-yellow-400/80 bg-gradient-to-r from-yellow-400 via-amber-400 to-orange-400 text-black shadow-lg ring-2 ring-yellow-300"
-                          : "border-slate-700 bg-slate-900/70 hover:border-slate-500",
-                      ].join(" ")}
+                          ? `${
+                              isDark
+                                ? "border-yellow-500 bg-gradient-to-r from-yellow-500/20 to-amber-500/20"
+                                : "border-amber-600 bg-gradient-to-r from-amber-100 to-orange-100"
+                            } ring-2 ring-yellow-400/50`
+                          : `${colors.cardBorder} ${colors.card} hover:border-gray-500`
+                      }`}
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="font-semibold truncate text-base">
+                      <div className="flex justify-between items-center">
+                        <div
+                          className={`font-bold ${
+                            isActive ? "text-yellow-600" : ""
+                          }`}
+                        >
                           {s.name}
                         </div>
                         <span
-                          className={`text-[15px] px-2 py-0.5 rounded-full font-semibold ${
+                          className={`text-xs px-2 py-1 rounded-full font-bold ${
                             isActive
-                              ? "bg-black/10 text-black"
-                              : "bg-slate-800 text-slate-300"
+                              ? "bg-black/20 text-black"
+                              : colors.badgeBg + " text-gray-600"
                           }`}
                         >
                           v{s.Version}
                         </span>
                       </div>
-                      <div className="mt-1 text-sm flex items-center gap-2 text-slate-400">
+                      <div
+                        className={`mt-2 flex gap-2 text-xs ${
+                          isActive ? "text-yellow-700" : colors.textMuted
+                        }`}
+                      >
                         <span
                           className={`px-2 py-0.5 rounded-full border ${
-                            isActive
-                              ? "border-black/40 text-black/80"
-                              : "border-slate-700 text-slate-300"
+                            isActive ? "border-black/30" : colors.cardBorder
                           }`}
                         >
                           {s.direction}
                         </span>
-                        <span className="truncate text-white/90">
+                        <span className="truncate">
                           {s.instruments.join(" • ")}
                         </span>
                       </div>
@@ -279,305 +321,346 @@ export default function PlaybookPage() {
             </div>
           </aside>
 
-          {/* MAIN CONTENT */}
+          {/* MAIN */}
           <main className="lg:col-span-8 space-y-6">
             {/* CHECKLISTS */}
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-6 lg:grid-cols-2">
               {/* UNIVERSAL CHECKLIST */}
-              <div className="rounded-3xl border border-emerald-400/40 bg-gradient-to-br from-emerald-500/15 via-slate-950 to-slate-950 shadow-[0_0_45px_rgba(34,197,94,0.25)] p-5 flex flex-col">
-                <div className="flex items-start justify-between gap-3 mb-4">
-                  <div>
-                    <h3 className="text-lg font-semibold flex items-center gap-2">
-                      Universal Checklist
-                      <span className="text-xs font-normal text-emerald-200/90 bg-emerald-500/15 px-2 py-0.5 rounded-full">
-                        Bắt buộc trước mọi lệnh
-                      </span>
-                    </h3>
-                    <p className="mt-1 text-sm text-emerald-100/80">
-                      Tick hết để đảm bảo trạng thái & điều kiện thị trường OK.
-                    </p>
+              <div className="min-w-0">
+                <div
+                  className={`rounded-3xl border ${
+                    isDark ? "border-emerald-500/40" : "border-emerald-400/50"
+                  } ${
+                    isDark
+                      ? "bg-gradient-to-br from-emerald-600/10 to-teal-700/10"
+                      : "bg-gradient-to-br from-emerald-50 to-teal-50"
+                  } p-6 shadow-xl`}
+                >
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-lg font-bold flex items-center gap-2 flex-wrap">
+                        <span className="truncate">Universal Checklist</span>
+                        <span
+                          className={`text-xs px-2 py-1 rounded-full flex-shrink-0 ${
+                            isDark
+                              ? "bg-emerald-500/20 text-emerald-300"
+                              : "bg-emerald-100 text-emerald-700"
+                          }`}
+                        >
+                          Bắt buộc
+                        </span>
+                      </h3>
+                      <p className={`text-sm ${colors.textMuted} mt-1`}>
+                        Tick hết trước mọi lệnh
+                      </p>
+                    </div>
+                    <div className="flex gap-2 ml-2">
+                      <button
+                        onClick={() =>
+                          copyToClipboard(selectedSetup.universal_checklist)
+                        }
+                        className={`p-2 rounded-xl ${
+                          isDark
+                            ? "bg-white/10 hover:bg-white/20"
+                            : "bg-gray-100 hover:bg-gray-200"
+                        } transition`}
+                      >
+                        <Copy size={16} />
+                      </button>
+                      <button
+                        onClick={() => setUniversalChecks({})}
+                        className={`p-2 rounded-xl ${
+                          isDark
+                            ? "bg-white/10 hover:bg-white/20"
+                            : "bg-gray-100 hover:bg-gray-200"
+                        } transition`}
+                      >
+                        <RotateCcw size={16} />
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex flex-col gap-2 items-end">
-                    <button
-                      onClick={() =>
-                        copyToClipboard(
-                          selectedSetup.universal_checklist || ""
-                        )
-                      }
-                      className="flex items-center gap-1 rounded-xl bg-white/10 px-3 py-1.5 text-sm font-medium hover:bg-white/20 transition"
-                    >
-                      <Copy size={15} /> Copy
-                    </button>
-                    <button
-                      onClick={() => setUniversalChecks({})}
-                      className="flex items-center gap-1 rounded-xl bg-white/5 px-3 py-1.5 text-xs hover:bg-white/10 transition text-emerald-100/90"
-                    >
-                      <RotateCcw size={15} /> Reset
-                    </button>
-                  </div>
-                </div>
-
-                <div className="mt-2 space-y-2 text-base flex-1 max-h-[40vh] overflow-y-auto pr-1">
-                  {uniLines.map((line, i) => (
-                    <label
-                      key={i}
-                      className="flex items-start gap-3 cursor-pointer rounded-2xl px-3 py-2.5 hover:bg-white/5 transition"
-                      onClick={() => toggleUniversal(i)}
-                    >
-                      <div className="mt-0.5">
+                  <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                    {uniLines.map((line, i) => (
+                      <label
+                        key={i}
+                        onClick={() => toggleUniversal(i)}
+                        className={`flex items-start gap-3 cursor-pointer p-3 rounded-xl transition min-w-0 ${colors.checklistHover}`}
+                      >
                         {universalChecks[i] ? (
-                          <CheckSquare
-                            size={22}
-                            className="text-emerald-300"
-                          />
+                          <CheckSquare size={22} className={colors.success} />
                         ) : (
                           <Square
                             size={22}
-                            className="text-emerald-100/60"
+                            className={`${colors.textMuted} opacity-60`}
                           />
                         )}
-                      </div>
-                      <span
-                        className={`leading-relaxed ${
-                          universalChecks[i] ? "line-through opacity-70" : ""
-                        }`}
-                      >
-                        {stripChecklistPrefix(line)}
-                      </span>
-                    </label>
-                  ))}
-                  {uniLines.length === 0 && (
-                    <div className="text-sm text-emerald-100/70 italic">
-                      Chưa cấu hình universal checklist cho setup này.
-                    </div>
-                  )}
-                </div>
-
-                <div className="mt-4 flex items-center justify-between text-sm text-emerald-100/90">
-                  <span>
+                        <span
+                          className={`leading-relaxed text-sm flex-1 min-w-0 ${
+                            universalChecks[i] ? "line-through opacity-60" : ""
+                          }`}
+                        >
+                          <span className="block truncate">
+                            {stripChecklistPrefix(line)}
+                          </span>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                  <div className={`mt-4 text-sm ${colors.textMuted}`}>
                     Đã tick:{" "}
-                    <strong className="text-emerald-300">
+                    <strong className={colors.success}>
                       {uniDone}/{uniLines.length}
                     </strong>
-                  </span>
+                  </div>
                 </div>
               </div>
 
               {/* SETUP CHECKLIST */}
-              <div className="rounded-3xl border border-slate-700/80 bg-gradient-to-br from-slate-900 via-slate-950 to-slate-950 shadow-[0_0_45px_rgba(15,23,42,0.85)] p-5 flex flex-col">
-                <div className="flex items-start justify-between gap-3 mb-4">
-                  <div>
-                    <h3 className="text-lg font-semibold">Setup Checklist</h3>
-                    <p className="mt-1 text-sm text-slate-300">
-                      {selectedSetup.name} · {selectedSetup.direction}
-                    </p>
-                  </div>
-                  <div className="flex flex-col gap-2 items-end">
-                    <button
-                      onClick={() =>
-                        copyToClipboard(selectedSetup.setup_checklist || "")
-                      }
-                      className="flex items-center gap-1 rounded-xl bg-yellow-400 text-black px-3 py-1.5 text-sm font-semibold hover:bg-yellow-300 transition"
-                    >
-                      <Copy size={15} /> Copy
-                    </button>
-                    <button
-                      onClick={() => setSetupChecks({})}
-                      className="flex items-center justify-center rounded-xl bg-white/5 px-3 py-1.5 hover:bg-white/10 transition"
-                    >
-                      <RotateCcw size={16} className="text-slate-200" />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="mt-2 space-y-2 text-base flex-1 max-h-[40vh] overflow-y-auto pr-1">
-                  {setupLines.map((line, i) => (
-                    <label
-                      key={i}
-                      className="flex items-start gap-3 cursor-pointer rounded-2xl px-3 py-2.5 hover:bg-white/5 transition"
-                      onClick={() => toggleSetup(i)}
-                    >
-                      <div className="mt-0.5">
-                        {setupChecks[i] ? (
-                          <CheckSquare
-                            size={22}
-                            className="text-yellow-400"
-                          />
-                        ) : (
-                          <Square size={22} className="text-slate-400" />
-                        )}
-                      </div>
-                      <span
-                        className={`leading-relaxed ${
-                          setupChecks[i] ? "line-through opacity-70" : ""
-                        }`}
+              <div className="min-w-0">
+                <div
+                  className={`rounded-3xl border ${
+                    isDark ? "border-amber-500/40" : "border-amber-400/50"
+                  } ${
+                    isDark
+                      ? "bg-gradient-to-br from-amber-600/10 to-orange-700/10"
+                      : "bg-gradient-to-br from-amber-50 to-orange-50"
+                  } p-6 shadow-xl`}
+                >
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-lg font-bold flex items-center gap-2 flex-wrap">
+                        <span className="truncate">Setup Checklist</span>
+                        <span
+                          className={`text-xs px-2 py-1 rounded-full flex-shrink-0 ${
+                            isDark
+                              ? "bg-amber-500/20 text-amber-300"
+                              : "bg-amber-100 text-amber-700"
+                          }`}
+                        >
+                          {selectedSetup.name}
+                        </span>
+                      </h3>
+                      <p
+                        className={`text-sm ${colors.textMuted} mt-1 truncate`}
                       >
-                        {stripChecklistPrefix(line)}
-                      </span>
-                    </label>
-                  ))}
-                  {setupLines.length === 0 && (
-                    <div className="text-sm text-slate-400 italic">
-                      Setup này chưa có checklist chi tiết.
+                        {selectedSetup.direction} •{" "}
+                        {selectedSetup.instruments.join(" • ")}
+                      </p>
                     </div>
-                  )}
-                </div>
-
-                <div className="mt-4 flex items-center justify-between text-sm text-slate-300">
-                  <div className="flex items-baseline gap-1">
-                    <span>
-                      {setupDone}/{setupLines.length} điều kiện
-                    </span>
-                    <span className="text-slate-500">· {setupPercent}%</span>
+                    <div className="flex gap-2 ml-2">
+                      <button
+                        onClick={() =>
+                          copyToClipboard(selectedSetup.setup_checklist)
+                        }
+                        className="p-2 rounded-xl bg-yellow-500 text-black hover:bg-yellow-400 transition"
+                      >
+                        <Copy size={16} />
+                      </button>
+                      <button
+                        onClick={() => setSetupChecks({})}
+                        className={`p-2 rounded-xl ${
+                          isDark
+                            ? "bg-white/10 hover:bg-white/20"
+                            : "bg-gray-100 hover:bg-gray-200"
+                        } transition`}
+                      >
+                        <RotateCcw size={16} />
+                      </button>
+                    </div>
                   </div>
-                  {setupPercent >= READY_THRESHOLD ? (
-                    <span className="text-xs font-semibold text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded-full">
-                      READY TO TRADE
+                  <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                    {setupLines.map((line, i) => (
+                      <label
+                        key={i}
+                        onClick={() => toggleSetup(i)}
+                        className={`flex items-start gap-3 cursor-pointer p-3 rounded-xl transition min-w-0 ${colors.checklistHover}`}
+                      >
+                        {setupChecks[i] ? (
+                          <CheckSquare size={22} className="text-yellow-500" />
+                        ) : (
+                          <Square
+                            size={22}
+                            className={`${colors.textMuted} opacity-60`}
+                          />
+                        )}
+                        <span
+                          className={`leading-relaxed text-sm flex-1 min-w-0 ${
+                            setupChecks[i] ? "line-through opacity-60" : ""
+                          }`}
+                        >
+                          <span className="block truncate">
+                            {stripChecklistPrefix(line)}
+                          </span>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                  <div className="mt-4 flex justify-between items-center text-sm">
+                    <span className={colors.textMuted}>
+                      Đã tick:{" "}
+                      <strong className="text-yellow-500">
+                        {setupDone}/{setupLines.length}
+                      </strong>
                     </span>
-                  ) : setupPercent >= ALMOST_THRESHOLD ? (
-                    <span className="text-xs font-semibold text-orange-400 bg-orange-400/10 px-2 py-1 rounded-full">
-                      Gần đủ điều kiện
-                    </span>
-                  ) : (
-                    <span className="text-xs text-slate-500">
-                      Tiếp tục rà lại các điều kiện.
-                    </span>
-                  )}
+                    <div>{renderStatusBadge(setupPercent, colors, isDark)}</div>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* CHI TIẾT SETUP + PERFORMANCE */}
-            <div className="rounded-3xl border border-slate-700/80 bg-slate-950/90 shadow-[0_0_55px_rgba(15,23,42,0.9)] p-6 space-y-6">
-              <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-800/70 pb-5">
+            {/* DETAIL + STATS */}
+            <div
+              className={`rounded-3xl border ${colors.cardBorder} ${colors.card} p-6 shadow-2xl`}
+            >
+              <div
+                className={`flex flex-wrap justify-between items-start gap-4 pb-5 border-b ${colors.dividerBorder}`}
+              >
                 <div>
-                  <h2 className="text-2xl font-semibold">
-                    {selectedSetup.name}
-                  </h2>
-                  <div className="mt-3 flex flex-wrap gap-2 text-sm">
-                    <span className="bg-yellow-400 text-black px-3 py-1 rounded-full font-semibold">
+                  <h2 className="text-2xl font-bold">{selectedSetup.name}</h2>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <span className="bg-yellow-500 text-black px-3 py-1 rounded-full text-sm font-bold">
                       v{selectedSetup.Version}
                     </span>
-                    <span className="bg-blue-500/80 px-3 py-1 rounded-full text-white">
+                    <span
+                      className={`px-3 py-1 rounded-full text-sm font-medium ${
+                        isDark
+                          ? "bg-blue-600 text-white"
+                          : "bg-blue-100 text-blue-800"
+                      }`}
+                    >
                       {selectedSetup.direction}
                     </span>
-                    <span className="bg-purple-500/80 px-3 py-1 rounded-full text-white">
+                    <span
+                      className={`px-3 py-1 rounded-full text-sm ${colors.textMuted}`}
+                    >
                       {selectedSetup.instruments.join(" • ")}
                     </span>
                   </div>
                 </div>
-
-                {/* Mini performance dashboard */}
-                <div className="grid grid-cols-2 gap-2 text-xs min-w-[220px]">
-                  <div className="bg-slate-900/80 border border-slate-700 rounded-xl px-3 py-2">
-                    <div className="text-slate-400">Total Trades</div>
-                    <div className="text-lg font-semibold text-slate-50">
-                      {setupStats.total}
-                    </div>
-                  </div>
-                  <div className="bg-slate-900/80 border border-slate-700 rounded-xl px-3 py-2">
-                    <div className="text-slate-400">Winrate</div>
-                    <div className="text-lg font-semibold text-emerald-400">
-                      {setupStats.winrate.toFixed(1)}%
-                    </div>
-                    <div className="text-[11px] text-slate-500">
-                      {setupStats.wins}W / {setupStats.losses}L / {setupStats.be}
-                      BE
-                    </div>
-                  </div>
-                  <div className="bg-slate-900/80 border border-slate-700 rounded-xl px-3 py-2">
-                    <div className="text-slate-400">Avg R</div>
-                    <div className="text-lg font-semibold text-indigo-400">
-                      {setupStats.avgR.toFixed(2)}
-                    </div>
-                  </div>
-                  <div className="bg-slate-900/80 border border-slate-700 rounded-xl px-3 py-2">
-                    <div className="text-slate-400">Expectancy</div>
+                {/* 4 STATS */}
+                <div className="flex items-center gap-3 flex-wrap">
+                  {[
+                    { label: "Trades", value: setupStats.total },
+                    {
+                      label: "Winrate",
+                      value: `${setupStats.winrate.toFixed(1)}%`,
+                      color: colors.success,
+                    },
+                    {
+                      label: "Avg R",
+                      value: setupStats.avgR.toFixed(2),
+                      color: "text-indigo-400",
+                    },
+                    {
+                      label: "Exp.",
+                      value: `${
+                        setupStats.expectancy >= 0 ? "+" : ""
+                      }${setupStats.expectancy.toFixed(1)}`,
+                      color:
+                        setupStats.expectancy >= 0
+                          ? colors.success
+                          : colors.danger,
+                    },
+                  ].map((stat, i) => (
                     <div
-                      className={
-                        "text-lg font-semibold " +
-                        (setupStats.expectancy >= 0
-                          ? "text-emerald-400"
-                          : "text-rose-400")
-                      }
+                      key={i}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium ${
+                        isDark ? "bg-gray-800/70" : "bg-gray-100"
+                      } border ${colors.cardBorder}`}
                     >
-                      {setupStats.expectancy.toFixed(1)}$/trade
+                      <span className={colors.textMuted}>{stat.label}:</span>
+                      <span className={`ml-1 font-bold ${stat.color || ""}`}>
+                        {stat.value}
+                      </span>
                     </div>
-                  </div>
+                  ))}
                 </div>
-              </header>
+              </div>
 
-              {/* Nếu đang loading trades, báo nhỏ nhỏ ở đây */}
               {loadingTrades && (
-                <div className="text-xs text-slate-500">
-                  Đang sync dữ liệu từ Trade Log...
+                <div className={`text-xs ${colors.textMuted} mt-3`}>
+                  Đang sync trades...
                 </div>
               )}
 
-              <div className="grid gap-5 md:grid-cols-2">
-                <Section title="1. Market Context (Bối cảnh)" defaultOpen>
-                  <Pre>{selectedSetup.context}</Pre>
-                </Section>
-
-                <Section title="2. Entry Rules (Quy tắc vào lệnh)" defaultOpen>
-                  <Pre>{selectedSetup.entry_rules}</Pre>
-                </Section>
-
-                <Section title="3. Stop Loss & Take Profit">
-                  <Pre>{selectedSetup.sl_tp_rules}</Pre>
-                </Section>
-
-                <Section title="4. Trade Management (Quản lý lệnh)">
-                  <Pre>{selectedSetup.management}</Pre>
-                </Section>
-
-                <Section title="5. Invalidation (Khi nào bỏ setup)">
-                  <Pre>{selectedSetup.invalidation}</Pre>
-                </Section>
-
-                <Section title="6. Common Mistakes (Lỗi hay gặp)">
-                  <Pre>{selectedSetup.mistakes}</Pre>
-                </Section>
-
+              <div className="mt-6 grid gap-5 md:grid-cols-2">
+                {[
+                  {
+                    title: "1. Market Context",
+                    content: selectedSetup.context,
+                  },
+                  {
+                    title: "2. Entry Rules",
+                    content: selectedSetup.entry_rules,
+                  },
+                  {
+                    title: "3. Stop Loss & TP",
+                    content: selectedSetup.sl_tp_rules,
+                  },
+                  {
+                    title: "4. Trade Management",
+                    content: selectedSetup.management,
+                  },
+                  {
+                    title: "5. Invalidation",
+                    content: selectedSetup.invalidation,
+                  },
+                  {
+                    title: "6. Common Mistakes",
+                    content: selectedSetup.mistakes,
+                  },
+                ].map((sec, i) => (
+                  <Section
+                    key={i}
+                    title={sec.title}
+                    isDark={isDark}
+                    colors={colors}
+                  >
+                    <Pre>{sec.content}</Pre>
+                  </Section>
+                ))}
                 {selectedSetup.notes && (
-                  <Section title="Notes / Changelog">
+                  <Section
+                    title="Notes / Changelog"
+                    isDark={isDark}
+                    colors={colors}
+                  >
                     <Pre>{selectedSetup.notes}</Pre>
                   </Section>
                 )}
-
-                {/* Recent trades của setup này */}
                 {setupStats.total > 0 && (
-                  <Section title="Recent trades dùng setup này">
-                    <div className="space-y-2 text-xs">
+                  <Section
+                    title="Recent Trades"
+                    isDark={isDark}
+                    colors={colors}
+                  >
+                    <div className="space-y-2">
                       {setupTrades
-                        .slice()
-                        .sort(
-                          (a, b) => new Date(b.date) - new Date(a.date)
-                        )
                         .slice(0, 6)
+                        .sort((a, b) => new Date(b.date) - new Date(a.date))
                         .map((t) => (
                           <div
                             key={t.id}
-                            className="flex justify-between items-center bg-slate-900/80 rounded-lg px-3 py-2"
+                            className={`flex justify-between items-center p-3 rounded-xl ${
+                              isDark ? "bg-gray-900/50" : "bg-gray-100"
+                            }`}
                           >
                             <div>
-                              <div className="font-semibold text-slate-100">
+                              <div className="font-medium">
                                 {t.symbol} • {t.direction}
                               </div>
-                              <div className="text-[11px] text-slate-400">
-                                {t.date} • RR:{" "}
-                                {t.rr ? t.rr.toFixed(2) : "-"}
+                              <div className={`text-xs ${colors.textMuted}`}>
+                                {t.date} • RR: {t.rr?.toFixed(2) || "-"}
                               </div>
                             </div>
                             <div
-                              className={
-                                "text-sm font-semibold " +
-                                (t.profit > 0
-                                  ? "text-emerald-400"
+                              className={`font-bold ${
+                                t.profit > 0
+                                  ? colors.success
                                   : t.profit < 0
-                                  ? "text-rose-400"
-                                  : "text-amber-300")
-                              }
+                                  ? colors.danger
+                                  : "text-amber-400"
+                              }`}
                             >
                               {t.profit > 0
                                 ? `+$${t.profit.toFixed(1)}`
@@ -599,52 +682,66 @@ export default function PlaybookPage() {
   );
 }
 
-/* Helper components */
-
-function Section({ title, children }) {
+/* COMPONENTS */
+function Section({ title, children, isDark, colors }) {
   return (
-    <section className="rounded-2xl border border-slate-800 bg-slate-900/70">
-      <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-800">
-        <h3 className="text-base font-semibold text-slate-100">{title}</h3>
-      </div>
-      <div className="px-5 py-4 max-h-64 overflow-y-auto">{children}</div>
+    <section
+      className={`rounded-2xl border ${colors.cardBorder} ${
+        isDark ? "bg-gray-800/70" : "bg-gray-50"
+      } p-4`}
+    >
+      <h3 className="text-base font-bold mb-3">{title}</h3>
+      <div className="text-sm leading-relaxed">{children}</div>
     </section>
   );
 }
 
 function Pre({ children }) {
   return (
-    <pre className="whitespace-pre-wrap break-words text-sm md:text-base leading-relaxed text-slate-100">
+    <pre className="whitespace-pre-wrap break-words text-sm text-inherit">
       {children}
     </pre>
   );
 }
 
-/* Utils */
-
 function stripChecklistPrefix(line) {
-  // Bỏ prefix kiểu "Check ...", "Uncheck ...", "Check -", "Uncheck:"
   return line.replace(/^(Check|Uncheck)\s*[-:]?\s*/i, "").trim();
 }
 
-function renderStatusBadge(percent) {
+function renderStatusBadge(percent, colors, isDark) {
   if (percent >= READY_THRESHOLD) {
     return (
-      <span className="text-xs font-semibold text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded-full">
+      <span
+        className={`text-xs font-bold px-3 py-1 rounded-full ${
+          isDark
+            ? "bg-emerald-500/20 text-emerald-400"
+            : "bg-emerald-100 text-emerald-700"
+        }`}
+      >
         READY TO TRADE
       </span>
     );
   }
   if (percent >= ALMOST_THRESHOLD) {
     return (
-      <span className="text-xs font-semibold text-orange-400 bg-orange-400/10 px-2 py-1 rounded-full">
-        Gần đủ điều kiện
+      <span
+        className={`text-xs font-bold px-3 py-1 rounded-full ${
+          isDark
+            ? "bg-orange-500/20 text-orange-400"
+            : "bg-orange-100 text-orange-700"
+        }`}
+      >
+        Gần đủ
       </span>
     );
   }
   return (
-    <span className="text-xs font-semibold text-slate-400 bg-slate-700/60 px-2 py-1 rounded-full">
-      Chưa đủ điều kiện
+    <span
+      className={`text-xs px-3 py-1 rounded-full ${
+        isDark ? "bg-gray-700 text-gray-300" : "bg-gray-200 text-gray-600"
+      }`}
+    >
+      Chưa đủ
     </span>
   );
 }

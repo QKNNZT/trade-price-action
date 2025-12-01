@@ -11,6 +11,7 @@ import clsx from "clsx";
 import ReviewModal from "./ReviewModal";
 import TradeDetailModal from "./TradeDetailModal";
 import TradeRow from "./TradeRow";
+import { API_BASE_URL } from "../config/api";
 
 const TRADES_PER_PAGE = 5;
 
@@ -20,7 +21,9 @@ export default function TradeTable({
   updateExit,
   totalProfit,
   onTradeUpdated,
+  theme = "dark",
 }) {
+  const isDark = theme === "dark";
   const navigate = useNavigate();
 
   const [uploadingAfterId, setUploadingAfterId] = useState(null);
@@ -147,20 +150,28 @@ export default function TradeTable({
           setDirectionFilter(value);
           setCurrentPage(1);
         }}
+        isDark={isDark}
       />
 
-      <div className="overflow-x-auto bg-white rounded-2xl shadow-2xl border border-gray-200">
-        <table className="w-full table-auto">
+      <div
+        className={`rounded-2xl shadow-2xl border max-w-full ${
+          isDark
+            ? "bg-gray-800/90 backdrop-blur-md border-gray-700"
+            : "bg-white/90 backdrop-blur-md border-gray-200"
+        }`}
+      >
+        <table className="w-full table-auto text-xs md:text-sm">
           <TableHeaderMemo
             sortDateOrder={sortDateOrder}
             onToggleSort={() =>
               setSortDateOrder((prev) => (prev === "desc" ? "asc" : "desc"))
             }
+            isDark={isDark}
           />
 
           <tbody>
             {paginatedTrades.length === 0 ? (
-              <NoDataRow />
+              <NoDataRow isDark={isDark} />
             ) : (
               paginatedTrades.map((trade) => (
                 <TradeRow
@@ -191,6 +202,7 @@ export default function TradeTable({
             totalTrades={totalTrades}
             tradesPerPage={TRADES_PER_PAGE}
             onPageChange={goToPage}
+            isDark={isDark}
           />
         )}
       </div>
@@ -208,6 +220,7 @@ export default function TradeTable({
         trade={selectedTrade}
         isOpen={isDetailOpen}
         onClose={() => setIsDetailOpen(false)}
+        theme={theme} // "dark" | "light"
       />
     </div>
   );
@@ -220,12 +233,21 @@ function HeaderSummary({
   totalTrades,
   directionFilter,
   onChangeFilter,
+  isDark,
 }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-4 bg-gradient-to-r from-gray-900 to-black text-white p-5 rounded-2xl shadow-xl">
+    <div
+      className={`flex flex-wrap items-center justify-between gap-4 p-5 rounded-2xl shadow-xl ${
+        isDark
+          ? "bg-gradient-to-r from-gray-900 to-black text-white"
+          : "bg-gradient-to-r from-gray-100 to-gray-50 text-gray-900 border border-gray-200"
+      }`}
+    >
       <div className="flex items-center gap-8 text-lg font-bold">
         <div>
-          <span className="text-gray-300">Total Profit:</span>{" "}
+          <span className={isDark ? "text-gray-300" : "text-gray-600"}>
+            Total Profit:
+          </span>{" "}
           <span
             className={totalProfit >= 0 ? "text-green-400" : "text-red-400"}
           >
@@ -233,14 +255,20 @@ function HeaderSummary({
           </span>
         </div>
         <div>
-          <span className="text-gray-300">Total Trades:</span>{" "}
+          <span className={isDark ? "text-gray-300" : "text-gray-600"}>
+            Total Trades:
+          </span>{" "}
           <span className="text-cyan-400">{totalTrades}</span>
         </div>
       </div>
       <select
         value={directionFilter}
         onChange={(e) => onChangeFilter(e.target.value)}
-        className="px-4 py-2 bg-gray-800 text-white rounded-lg border border-gray-600 focus:outline-none focus:border-cyan-500"
+        className={`px-4 py-2 rounded-lg border focus:outline-none focus:border-cyan-500 ${
+          isDark
+            ? "bg-gray-800 text-white border-gray-600"
+            : "bg-white text-gray-800 border-gray-300"
+        }`}
       >
         <option value="All">All Directions</option>
         <option value="Long">Long Only</option>
@@ -252,30 +280,65 @@ function HeaderSummary({
 
 const HeaderSummaryMemo = memo(HeaderSummary);
 
-function TableHeader({ sortDateOrder, onToggleSort }) {
+function TableHeader({ sortDateOrder, onToggleSort, isDark }) {
   return (
-    <thead className="bg-gradient-to-r from-gray-900 to-black text-white">
+    <thead
+      className={
+        isDark
+          ? "bg-gradient-to-r from-gray-900 to-black text-white"
+          : "bg-gradient-to-r from-gray-100 to-white text-gray-900 border-b border-gray-200"
+      }
+    >
       <tr>
         <th
-          className="p-5 text-left font-bold cursor-pointer hover:bg-gray-800 transition"
+          className={`px-3 py-2 text-left font-semibold cursor-pointer transition ${
+            isDark ? "hover:bg-gray-800" : "hover:bg-gray-100"
+          }`}
           onClick={onToggleSort}
         >
-          <div className="flex items-center gap-2">
-            Date
-            {sortDateOrder === "desc" ? <FiArrowDown /> : <FiArrowUp />}
+          <div className="flex items-center gap-1">
+            <span className="text-xs md:text-sm">Date</span>
+            {sortDateOrder === "desc" ? (
+              <FiArrowDown size={14} />
+            ) : (
+              <FiArrowUp size={14} />
+            )}
           </div>
         </th>
-        <th className="p-5 text-left font-bold">Symbol</th>
-        <th className="p-5 text-left font-bold">Setup</th>
-        <th className="p-5 text-left font-bold">Dir</th>
-        <th className="p-5 text-left font-bold">Entry → Exit</th>
-        <th className="p-5 text-left font-bold">RR</th>
-        <th className="p-5 text-left font-bold">Result</th>
-        <th className="p-5 text-left font-bold">Grade</th>
-        <th className="p-5 text-left font-bold">Review</th>
-        <th className="p-5 text-left font-bold">Chart</th>
-        <th className="p-5 text-left font-bold">Close</th>
-        <th className="p-5 text-center font-bold">Actions</th>
+
+        <th className="px-3 py-2 text-left font-semibold text-xs md:text-sm">
+          Symbol
+        </th>
+        <th className="px-3 py-2 text-left font-semibold text-xs md:text-sm">
+          Setup
+        </th>
+        <th className="px-3 py-2 text-left font-semibold text-xs md:text-sm">
+          Dir
+        </th>
+        <th className="px-3 py-2 text-left font-semibold text-xs md:text-sm">
+          Entry → Exit
+        </th>
+        <th className="px-3 py-2 text-left font-semibold text-xs md:text-sm">
+          RR
+        </th>
+        <th className="px-3 py-2 text-left font-semibold text-xs md:text-sm">
+          Result
+        </th>
+        <th className="px-3 py-2 text-left font-semibold text-xs md:text-sm">
+          Grade
+        </th>
+        <th className="px-3 py-2 text-left font-semibold text-xs md:text-sm">
+          Review
+        </th>
+        <th className="px-3 py-2 text-left font-semibold text-xs md:text-sm">
+          Chart
+        </th>
+        <th className="px-3 py-2 text-left font-semibold text-xs md:text-sm">
+          Close
+        </th>
+        <th className="px-3 py-2 text-center font-semibold text-xs md:text-sm">
+          Actions
+        </th>
       </tr>
     </thead>
   );
@@ -283,10 +346,15 @@ function TableHeader({ sortDateOrder, onToggleSort }) {
 
 const TableHeaderMemo = memo(TableHeader);
 
-function NoDataRow() {
+function NoDataRow({ isDark }) {
   return (
     <tr>
-      <td colSpan="12" className="p-10 text-center text-gray-500 text-lg">
+      <td
+        colSpan="12"
+        className={`p-10 text-center text-lg ${
+          isDark ? "text-gray-500" : "text-gray-400"
+        }`}
+      >
         Không có lệnh nào phù hợp với bộ lọc.
       </td>
     </tr>
@@ -299,13 +367,20 @@ function Pagination({
   totalTrades,
   tradesPerPage,
   onPageChange,
+  isDark,
 }) {
   const start = (currentPage - 1) * tradesPerPage + 1;
   const end = Math.min(currentPage * tradesPerPage, totalTrades);
 
   return (
-    <div className="flex items-center justify-between px-6 py-4 bg-gray-50 border-t border-gray-200">
-      <div className="text-sm text-gray-600">
+    <div
+      className={`flex items-center justify-between px-5 py-3 text-sm ${
+        isDark
+          ? "bg-gray-800/50 border-t border-gray-700 text-gray-400"
+          : "bg-gray-50 border-t border-gray-200 text-gray-600"
+      }`}
+    >
+      <div>
         Hiển thị {start} - {end} / {totalTrades} lệnh
       </div>
       <div className="flex items-center gap-2">
@@ -313,25 +388,37 @@ function Pagination({
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
           className={clsx(
-            "p-2 rounded-lg",
+            "p-1.5 rounded-lg transition",
             currentPage === 1
-              ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-              : "bg-white hover:bg-gray-100"
+              ? isDark
+                ? "bg-gray-700/50 text-gray-500 cursor-not-allowed"
+                : "bg-gray-200 text-gray-400 cursor-not-allowed"
+              : isDark
+              ? "bg-gray-700 hover:bg-gray-600 text-white"
+              : "bg-white hover:bg-gray-100 text-gray-700"
           )}
         >
           <FiChevronLeft size={20} />
         </button>
-        <span className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium">
+        <span
+          className={`px-4 py-1.5 rounded-lg font-medium ${
+            isDark ? "bg-blue-600 text-white" : "bg-blue-500 text-white"
+          }`}
+        >
           {currentPage} / {totalPages}
         </span>
         <button
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
           className={clsx(
-            "p-2 rounded-lg",
+            "p-1.5 rounded-lg transition",
             currentPage === totalPages
-              ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-              : "bg-white hover:bg-gray-100"
+              ? isDark
+                ? "bg-gray-700/50 text-gray-500 cursor-not-allowed"
+                : "bg-gray-200 text-gray-400 cursor-not-allowed"
+              : isDark
+              ? "bg-gray-700 hover:bg-gray-600 text-white"
+              : "bg-white hover:bg-gray-100 text-gray-700"
           )}
         >
           <FiChevronRight size={20} />
@@ -342,6 +429,3 @@ function Pagination({
 }
 
 const PaginationMemo = memo(Pagination);
-
-// Đừng quên import API_BASE_URL ở trên cùng
-import { API_BASE_URL } from "../config/api";

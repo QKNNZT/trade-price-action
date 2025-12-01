@@ -1,50 +1,179 @@
-export default function TradeScreenshot({ screenshot }) {
-    return (
-        <div className="hidden md:block w-1/2 bg-black/40 overflow-hidden relative group">
-            <div className="h-full overflow-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent hover:scrollbar-thumb-gray-500">
-                <div className="min-w-full h-full flex items-center justify-center p-8">
-                    {screenshot ? (
-                        <img
-                            src={screenshot}
-                            alt="Trade chart"
-                            className="max-w-none h-auto max-h-full rounded-2xl border border-gray-700 shadow-2xl 
-                            object-contain select-none transition-all duration-300 group-hover:scale-[1.02] 
-                            hover:shadow-3xl cursor-grab active:cursor-grabbing"
-                            draggable={false}
-                        />
-                    ) : (
-                        <div className="text-center text-gray-500">
-                            <div className="bg-gray-800 border-2 border-dashed border-gray-600 rounded-2xl w-96 h-96 mx-auto mb-4" />
-                            <p className="text-lg">Không có ảnh chart</p>
-                        </div>
-                    )}
-                </div>
-            </div>
+import React from "react";
+import { Maximize2, ImageOff, UploadCloud, Trash2 } from "lucide-react";
 
-            <button
-                onClick={() => {
-                    if (!screenshot) return;
+export default function TradeScreenshot({
+  screenshot,
+  theme = "dark",
+  setScreenshot,
+  update,
+}) {
+  const isDark = theme === "dark";
+  const fileInputRef = React.useRef(null);
 
-                    const byteString = atob(screenshot.split(",")[1]);
-                    const mimeString = screenshot.split(",")[0].split(":")[1].split(";")[0];
+  // XOÁ ẢNH
+  const handleDelete = () => {
+    setScreenshot(null);
+    update("screenshot", null);
+  };
 
-                    const ab = new ArrayBuffer(byteString.length);
-                    const ia = new Uint8Array(ab);
-                    for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+  // UPLOAD ẢNH
+  const handleFile = (file) => {
+    if (!file || !file.type?.startsWith("image/")) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result;
+      setScreenshot(dataUrl);
+    };
+    reader.readAsDataURL(file);
+  };
 
-                    const blob = new Blob([ab], { type: mimeString });
-                    const url = URL.createObjectURL(blob);
+  const handleDrop = (e) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files?.[0];
+    handleFile(file);
+  };
 
-                    window.open(url, "_blank");
-                }}
-                className="absolute bottom-5 right-5 bg-black/70 hover:bg-black/90 text-white p-3 rounded-xl 
-                backdrop-blur border border-gray-700 opacity-0 group-hover:opacity-100 transition-all duration-300 z-10"
+  const handleDragOver = (e) => {
+    e.preventDefault();
+  };
+
+  const handleClick = () => fileInputRef.current?.click();
+
+  const openFullscreen = () => {
+    if (!screenshot) return;
+    const byteString = atob(screenshot.split(",")[1]);
+    const mimeString = screenshot.split(",")[0].split(":")[1].split(";")[0];
+    const ab = new ArrayBuffer(byteString.length);
+    const ia = new Uint8Array(ab);
+    for (let i = 0; i < byteString.length; i++) {
+      ia[i] = byteString.charCodeAt(i);
+    }
+    const blob = new Blob([ab], { type: mimeString });
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank");
+  };
+
+  return (
+    <div
+      className={`
+        hidden md:block w-1/2 relative overflow-hidden rounded-3xl
+        ${
+          isDark
+            ? "bg-gradient-to-br from-slate-800/50 to-slate-900/50"
+            : "bg-gradient-to-br from-blue-50/70 to-cyan-50/70"
+        }
+      `}
+      onDrop={handleDrop}
+      onDragOver={handleDragOver}
+    >
+      {/* INPUT FILE ẨN */}
+      <input
+        type="file"
+        accept="image/*"
+        ref={fileInputRef}
+        className="hidden"
+        onChange={(e) => handleFile(e.target.files?.[0] || null)}
+      />
+
+      {/* SCROLL CONTAINER */}
+      <div className="h-full overflow-auto scrollbar-thin scrollbar-thumb-rounded-full">
+        <div className="min-h-full flex items-center justify-center p-6 sm:p-8">
+          {screenshot ? (
+            <div className="relative group">
+              <img
+                src={screenshot}
+                alt="Trade chart"
+                className={`
+                  w-full h-full rounded-3xl border-2 shadow-2xl
+                  object-cover select-none transition-all duration-300
+                  group-hover:scale-[1.02] group-hover:shadow-3xl cursor-grab active:cursor-grabbing
+                  ${isDark ? "border-slate-600" : "border-blue-200"}
+                `}
+                draggable={false}
+              />
+
+              {/* TOOLBAR NÚT HÀNH ĐỘNG – LUÔN HIỂN THỊ, CÓ MÀU RÕ RÀNG */}
+              <div
+                className={`
+                  absolute top-4 right-4 flex gap-2
+                `}
+              >
+                {/* Nút upload */}
+                <button
+                  onClick={handleClick}
+                  className={`
+                    px-3 py-2 rounded-xl text-sm font-medium flex items-center gap-1
+                    shadow-md
+                    bg-blue-500 hover:bg-blue-600 text-white
+                  `}
+                  title="Đổi ảnh chart"
+                >
+                  <UploadCloud className="w-4 h-4" />
+                  <span className="hidden sm:inline">Upload</span>
+                </button>
+
+                {/* Nút xoá */}
+                <button
+                  onClick={handleDelete}
+                  className={`
+                    px-3 py-2 rounded-xl text-sm font-medium flex items-center gap-1
+                    shadow-md
+                    bg-rose-500 hover:bg-rose-600 text-white
+                  `}
+                  title="Xoá ảnh chart"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span className="hidden sm:inline">Xoá</span>
+                </button>
+              </div>
+
+              {/* FULLSCREEN BUTTON */}
+              <button
+                onClick={openFullscreen}
+                className={`
+                  absolute bottom-4 right-4 px-3 py-2 rounded-xl
+                  shadow-lg flex items-center gap-2
+                  font-medium text-sm
+                  ${isDark ? "bg-black/60 text-white" : "bg-slate-900 text-white"}
+                `}
                 title="Mở ảnh fullscreen"
-            >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-                </svg>
-            </button>
+              >
+                <Maximize2 className="w-5 h-5" />
+                <span className="hidden sm:inline">Fullscreen</span>
+              </button>
+            </div>
+          ) : (
+            /* NO IMAGE */
+            <div className="text-center space-y-4">
+              <div
+                className={`
+                  w-80 h-80 mx-auto rounded-3xl border-4 border-dashed flex flex-col items-center justify-center
+                  cursor-pointer select-none
+                  ${
+                    isDark
+                      ? "bg-slate-800/60 border-sky-400/70 text-slate-100"
+                      : "bg-white border-sky-400/80 text-slate-700"
+                  }
+                `}
+                onClick={handleClick}
+              >
+                <ImageOff className="w-16 h-16 mb-3" />
+                <p className="text-lg font-semibold mb-1">Không có ảnh chart</p>
+                <p className="text-xs sm:text-sm max-w-[14rem] mx-auto mb-3">
+                  Kéo/thả ảnh vào đây hoặc bấm nút bên dưới để upload.
+                </p>
+
+                <button
+                  className="mt-1 px-4 py-2 rounded-full text-sm font-medium bg-blue-500 hover:bg-blue-600 text-white shadow"
+                  type="button"
+                >
+                  + Upload ảnh
+                </button>
+              </div>
+            </div>
+          )}
         </div>
-    );
+      </div>
+    </div>
+  );
 }

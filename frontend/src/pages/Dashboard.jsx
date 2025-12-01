@@ -15,7 +15,9 @@ import SessionStats from "../components/dashboard/SessionStats";
 import TimeframeStats from "../components/dashboard/TimeframeStats";
 import SetupTable from "../components/dashboard/SetupTable";
 
-export default function Dashboard() {
+export default function Dashboard({ theme = "dark" }) {
+  const isDark = theme === "dark";
+
   // Filter thời gian cho backend stats
   const [filter, setFilter] = useState("Last 6M");
 
@@ -64,8 +66,16 @@ export default function Dashboard() {
   // Loading state
   if (statsLoading && !overview) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#0B0E11]">
-        <div className="text-2xl text-gray-400 animate-pulse">
+      <div
+        className={`flex items-center justify-center min-h-screen ${
+          isDark ? "bg-[#0B0E11]" : "bg-slate-50"
+        }`}
+      >
+        <div
+          className={`text-2xl animate-pulse ${
+            isDark ? "text-gray-400" : "text-gray-500"
+          }`}
+        >
           Loading Pro Dashboard...
         </div>
       </div>
@@ -74,8 +84,14 @@ export default function Dashboard() {
 
   if (!overview) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#0B0E11]">
-        <div className="text-2xl text-gray-400">
+      <div
+        className={`flex items-center justify-center min-h-screen ${
+          isDark ? "bg-[#0B0E11]" : "bg-slate-50"
+        }`}
+      >
+        <div
+          className={`text-2xl ${isDark ? "text-gray-400" : "text-gray-600"}`}
+        >
           No stats available yet. Add some trades to see the magic ✨
         </div>
       </div>
@@ -141,195 +157,269 @@ export default function Dashboard() {
     return acc;
   }, {});
 
+  // ─────────────────────────────────────────
+  // LAYOUT GIỐNG MONTHLY (NO HORIZONTAL SCROLL)
+  // ─────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[#0B0E11] text-white">
-      {/* Header */}
-      <div className="text-center py-10">
-        <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-[#F0B90B] via-yellow-400 to-amber-500 bg-clip-text text-transparent">
-          PRO TRADING DASHBOARD
-        </h1>
-        <p className="mt-3 text-gray-400 text-lg">
-          {totalTrades} trades •{" "}
-          <span className="text-[#F0B90B] font-semibold">{filter}</span>
-        </p>
-        {statsError && (
-          <p className="mt-2 text-sm text-red-400">Stats error: {statsError}</p>
-        )}
-      </div>
-
-      {/* FILTER BUTTONS (time) */}
-      <div className="flex flex-wrap justify-center gap-3 max-w-4xl mx-auto px-4 mb-10">
-        {["All Time", "Last 30D", "Last 6M", "YTD"].map((option) => (
-          <button
-            key={option}
-            onClick={() => setFilter(option)}
-            className={`px-6 py-3 rounded-xl font-semibold text-sm transition-all transform hover:scale-105 ${
-              filter === option
-                ? "bg-gradient-to-r from-[#F0B90B] to-yellow-500 text-black shadow-xl shadow-yellow-500/30"
-                : "bg-[#1A1D23] border border-[#2A2F36] text-gray-300 hover:bg-[#2A2F36]"
+    <div
+      className={`min-h-screen transition-colors duration-300 ${
+        isDark
+          ? "bg-[#0B0E11] text-white"
+          : "bg-gradient-to-br from-gray-50 via-white to-gray-100 text-gray-900"
+      } p-6`} // ✨ thêm p-6 giống Monthly.jsx
+    >
+      {/* Container giống Monthly: w-full + padding, KHÔNG max-w */}
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-6 lg:py-8 space-y-10">
+        {/* Header */}
+        <div className="text-center">
+          <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-[#F0B90B] via-amber-400 to-yellow-500 bg-clip-text text-transparent">
+            PRO TRADING DASHBOARD
+          </h1>
+          <p
+            className={`mt-3 text-lg ${
+              isDark ? "text-gray-400" : "text-gray-600"
             }`}
           >
-            {option}
-          </button>
-        ))}
-      </div>
-
-      {/* ADVANCED FILTERS: symbol / setup / session / timeframe */}
-      <div className="flex flex-wrap justify-center gap-3 max-w-5xl mx-auto px-4 mb-8">
-        <select
-          value={symbolFilter}
-          onChange={(e) => setSymbolFilter(e.target.value)}
-          className="px-4 py-2 bg-[#1A1D23] border border-[#2A2F36] rounded-xl text-sm text-gray-200"
-        >
-          <option value="All">All Symbols</option>
-          {symbols.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
-
-        <select
-          value={setupFilter}
-          onChange={(e) => setSetupFilter(e.target.value)}
-          className="px-4 py-2 bg-[#1A1D23] border border-[#2A2F36] rounded-xl text-sm text-gray-200"
-        >
-          <option value="All">All Setups</option>
-          {setups.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
-
-        <select
-          value={sessionFilter}
-          onChange={(e) => setSessionFilter(e.target.value)}
-          className="px-4 py-2 bg-[#1A1D23] border border-[#2A2F36] rounded-xl text-sm text-gray-200"
-        >
-          <option value="All">All Sessions</option>
-          {sessions.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
-
-        <select
-          value={timeframeFilter}
-          onChange={(e) => setTimeframeFilter(e.target.value)}
-          className="px-4 py-2 bg-[#1A1D23] border border-[#2A2F36] rounded-xl text-sm text-gray-200"
-        >
-          <option value="All">All Timeframes</option>
-          {timeframes.map((tf) => (
-            <option key={tf} value={tf}>
-              {tf}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div className="px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-20 pb-20 space-y-12">
-        {/* TOP STATS */}
-        <StatsCards
-          totalTrades={totalTrades}
-          winrate={winrate}
-          totalProfit={totalProfit}
-          avgR={avgR}
-          maxDrawdown={maxDrawdown}
-          expectancy={expectancy}
-          profitFactor={profitFactor}
-        />
-
-        {/* EQUITY CURVE */}
-        <div className="bg-[#1A1D23]/80 backdrop-blur border border-[#2A2F36] rounded-3xl p-8 shadow-2xl">
-          <h2 className="text-2xl font-bold text-[#F0B90B] mb-6">
-            Equity Curve • {filter} (R)
-          </h2>
-          <div className="h-96">
-            <EquityCurve data={equityR} />
-          </div>
+            {totalTrades} trades •{" "}
+            <span className="text-[#F0B90B] font-semibold">{filter}</span>
+          </p>
+          {statsError && (
+            <p className="mt-2 text-sm text-red-500">{statsError}</p>
+          )}
         </div>
 
-        {/* WINRATE BY SETUP + MISTAKES */}
-        <div className="grid lg:grid-cols-2 gap-8">
-          <div className="bg-[#1A1D23] border border-[#2A2F36] rounded-3xl p-8 shadow-2xl">
-            <h2 className="text-2xl font-bold text-emerald-400 mb-6">
-              Winrate by Setup
+        {/* FILTER BUTTONS (time) */}
+        <div className="flex flex-wrap justify-center gap-3 max-w-4xl mx-auto">
+          {["All Time", "Last 30D", "Last 6M", "YTD"].map((option) => (
+            <button
+              key={option}
+              onClick={() => setFilter(option)}
+              className={`px-6 py-3 rounded-xl font-semibold text-sm transition-all transform hover:scale-105 shadow-md ${
+                filter === option
+                  ? "bg-gradient-to-r from-[#F0B90B] to-amber-500 text-black shadow-amber-400/30"
+                  : isDark
+                  ? "bg-[#1A1D23] border border-[#2A2F36] text-gray-300 hover:bg-[#2A2F36]"
+                  : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400"
+              }`}
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+
+        {/* ADVANCED FILTERS */}
+        <div className="flex flex-wrap justify-center gap-3 max-w-5xl mx-auto">
+          {[
+            {
+              value: symbolFilter,
+              set: setSymbolFilter,
+              options: symbols,
+              label: "Symbols",
+            },
+            {
+              value: setupFilter,
+              set: setSetupFilter,
+              options: setups,
+              label: "Setups",
+            },
+            {
+              value: sessionFilter,
+              set: setSessionFilter,
+              options: sessions,
+              label: "Sessions",
+            },
+            {
+              value: timeframeFilter,
+              set: setTimeframeFilter,
+              options: timeframes,
+              label: "Timeframes",
+            },
+          ].map(({ value, set, options, label }) => (
+            <select
+              key={label}
+              value={value}
+              onChange={(e) => set(e.target.value)}
+              className={`px-4 py-2 rounded-xl text-sm font-medium border transition-all ${
+                isDark
+                  ? "bg-[#1A1D23] border-[#2A2F36] text-gray-200 focus:border-yellow-500"
+                  : "bg-white border-gray-300 text-gray-800 focus:border-[#F0B90B] focus:ring-2 focus:ring-yellow-200"
+              } focus:outline-none focus:ring-2`}
+            >
+              <option value="All">All {label}</option>
+              {options.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
+            </select>
+          ))}
+        </div>
+
+        {/* MAIN CONTENT BLOCKS */}
+        <div className="space-y-12">
+          {/* TOP STATS */}
+          <StatsCards
+            totalTrades={totalTrades}
+            winrate={winrate}
+            totalProfit={totalProfit}
+            avgR={avgR}
+            maxDrawdown={maxDrawdown}
+            expectancy={expectancy}
+            profitFactor={profitFactor}
+            theme={theme}
+          />
+
+          {/* EQUITY CURVE */}
+          <div
+            className={`rounded-3xl p-8 shadow-xl backdrop-blur-sm border transition-all ${
+              isDark
+                ? "bg-[#1A1D23]/80 border-[#2A2F36]"
+                : "bg-white/95 border-gray-200 shadow-lg"
+            }`}
+          >
+            <h2 className="text-2xl font-bold bg-gradient-to-r from-[#F0B90B] to-amber-500 bg-clip-text text-transparent mb-6">
+              Equity Curve • {filter} (R)
             </h2>
-            <div className="h-80">
-              <WinrateBySetup statsBySetup={statsBySetup} />
+            <div className="h-96">
+              <EquityCurve data={equityR} theme={theme} />
             </div>
           </div>
-          <div className="bg-[#1A1D23] border border-[#2A2F36] rounded-3xl p-8 shadow-2xl">
-            <h2 className="text-2xl font-bold text-red-500 mb-6">
-              Mistakes Analysis
-            </h2>
-            <div className="h-80 flex items-center justify-center">
-              <div className="w-full max-w-md">
-                <MistakesAnalysis data={mistakes} />
+
+          {/* WINRATE BY SETUP + MISTAKES */}
+          <div className="grid lg:grid-cols-2 gap-8">
+            <div
+              className={`rounded-3xl p-8 shadow-xl border transition-all ${
+                isDark
+                  ? "bg-[#1A1D23] border-[#2A2F36]"
+                  : "bg-white border-gray-200"
+              }`}
+            >
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-emerald-500 to-teal-500 bg-clip-text text-transparent mb-6">
+                Winrate by Setup
+              </h2>
+              <div className="h-80">
+                <WinrateBySetup statsBySetup={statsBySetup} theme={theme} />
+              </div>
+            </div>
+
+            <div
+              className={`rounded-3xl p-8 shadow-xl border transition-all ${
+                isDark
+                  ? "bg-[#1A1D23] border-[#2A2F36]"
+                  : "bg-white border-gray-200"
+              }`}
+            >
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-red-500 to-rose-500 bg-clip-text text-transparent mb-6">
+                Mistakes Analysis
+              </h2>
+              <div className="h-80 flex items-center justify-center">
+                <div className="w-full max-w-md">
+                  <MistakesAnalysis data={mistakes} theme={theme} />
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* MONTHLY P&L + DRAWDOWN */}
-        <div className="grid lg:grid-cols-2 gap-8">
-          <div className="bg-[#1A1D23] border border-[#2A2F36] rounded-3xl p-8 shadow-2xl">
-            <h2 className="text-2xl font-bold text-emerald-400 mb-6">
-              Monthly P&L
-            </h2>
-            <div className="h-80">
-              <MonthlyPnL data={monthlyPnl} />
+          {/* MONTHLY P&L + DRAWDOWN */}
+          <div className="grid lg:grid-cols-2 gap-8">
+            <div
+              className={`rounded-3xl p-8 shadow-xl border transition-all ${
+                isDark
+                  ? "bg-[#1A1D23] border-[#2A2F36]"
+                  : "bg-white border-gray-200"
+              }`}
+            >
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-emerald-400 to-cyan-500 bg-clip-text text-transparent mb-6">
+                Monthly P&L
+              </h2>
+              <div className="h-80">
+                <MonthlyPnL data={monthlyPnl} theme={theme} />
+              </div>
+            </div>
+
+            <div
+              className={`rounded-3xl p-8 shadow-xl border transition-all ${
+                isDark
+                  ? "bg-[#1A1D23] border-[#2A2F36]"
+                  : "bg-white border-gray-200"
+              }`}
+            >
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-red-500 to-pink-500 bg-clip-text text-transparent mb-6">
+                Drawdown Curve
+              </h2>
+              <div className="h-80">
+                <DrawdownChart
+                  drawdowns={drawdowns}
+                  maxDrawdown={maxDrawdown}
+                  theme={theme}
+                />
+              </div>
             </div>
           </div>
-          <div className="bg-[#1A1D23] border border-[#2A2F36] rounded-3xl p-8 shadow-2xl">
-            <h2 className="text-2xl font-bold text-red-500 mb-6">
-              Drawdown Curve
-            </h2>
-            <div className="h-80">
-              <DrawdownChart drawdowns={drawdowns} maxDrawdown={maxDrawdown} />
+
+          {/* SESSION / TIMEFRAME */}
+          <div className="grid md:grid-cols-2 gap-8">
+            <div
+              className={`rounded-3xl p-8 shadow-xl border transition-all ${
+                isDark
+                  ? "bg-[#1A1D23] border-[#2A2F36]"
+                  : "bg-white border-gray-200"
+              }`}
+            >
+              <h2 className="text-xl font-bold bg-gradient-to-r from-cyan-500 to-blue-500 bg-clip-text text-transparent mb-6">
+                Best Session
+              </h2>
+              <div className="h-72">
+                <SessionStats data={sessionMap} theme={theme} />
+              </div>
+            </div>
+
+            <div
+              className={`rounded-3xl p-8 shadow-xl border transition-all ${
+                isDark
+                  ? "bg-[#1A1D23] border-[#2A2F36]"
+                  : "bg-white border-gray-200"
+              }`}
+            >
+              <h2 className="text-xl font-bold bg-gradient-to-r from-purple-500 to-indigo-500 bg-clip-text text-transparent mb-6">
+                Best Timeframe
+              </h2>
+              <div className="h-72">
+                <TimeframeStats data={timeframeMap} theme={theme} />
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* SESSION / TIMEFRAME */}
-        <div className="grid md:grid-cols-2 gap-8">
-          <div className="bg-[#1A1D23] border border-[#2A2F36] rounded-3xl p-8 shadow-2xl">
-            <h2 className="text-xl font-bold text-cyan-400 mb-6">
-              Best Session
-            </h2>
-            <div className="h-72">
-              <SessionStats data={sessionMap} />
+          {/* GRADE / PROCESS QUALITY */}
+          {Object.keys(gradeMap).length > 0 && (
+            <div
+              className={`rounded-3xl p-8 shadow-xl border transition-all ${
+                isDark
+                  ? "bg-[#1A1D23] border-[#2A2F36]"
+                  : "bg-white border-gray-200"
+              }`}
+            >
+              <h2 className="text-xl font-bold bg-gradient-to-r from-teal-500 to-emerald-500 bg-clip-text text-transparent mb-6">
+                Process Quality by Grade
+              </h2>
+              <GradeStats data={gradeMap} theme={theme} />
             </div>
-          </div>
-          <div className="bg-[#1A1D23] border border-[#2A2F36] rounded-3xl p-8 shadow-2xl">
-            <h2 className="text-xl font-bold text-purple-400 mb-6">
-              Best Timeframe
+          )}
+
+          {/* SETUP TABLE DETAIL */}
+          <div
+            className={`rounded-3xl p-8 shadow-xl border transition-all ${
+              isDark
+                ? "bg-[#1A1D23] border-[#2A2F36]"
+                : "bg-white border-gray-200"
+            }`}
+          >
+            <h2 className="text-2xl font-bold bg-gradient-to-r from-[#F0B90B] to-amber-500 bg-clip-text text-transparent mb-6">
+              Setup Performance Detail
             </h2>
-            <div className="h-72">
-              <TimeframeStats data={timeframeMap} />
+            <div className="overflow-x-auto">
+              <SetupTable statsBySetup={statsBySetup} theme={theme} />
             </div>
-          </div>
-        </div>
-
-        {/* GRADE / PROCESS QUALITY */}
-        {Object.keys(gradeMap).length > 0 && (
-          <div className="bg-[#1A1D23] border border-[#2A2F36] rounded-3xl p-8 shadow-2xl">
-            <h2 className="text-xl font-bold text-teal-400 mb-6">
-              Process Quality by Grade
-            </h2>
-            <GradeStats data={gradeMap} />
-          </div>
-        )}
-
-        {/* SETUP TABLE DETAIL */}
-        <div className="bg-[#1A1D23] border border-[#2A2F36] rounded-3xl p-8 shadow-2xl">
-          <h2 className="text-2xl font-bold text-[#F0B90B] mb-6">
-            Setup Performance Detail
-          </h2>
-          <div className="overflow-x-auto">
-            <SetupTable statsBySetup={statsBySetup} />
           </div>
         </div>
       </div>

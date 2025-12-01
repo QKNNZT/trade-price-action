@@ -9,6 +9,7 @@ import {
     TimeSeriesScale,
     Tooltip,
     Legend,
+    Filler
 } from "chart.js";
 
 // Register ALL required components
@@ -21,7 +22,8 @@ Chart.register(
     LinearScale,
     TimeSeriesScale,
     Tooltip,
-    Legend
+    Legend,
+    Filler
 );
 
 export default Chart;

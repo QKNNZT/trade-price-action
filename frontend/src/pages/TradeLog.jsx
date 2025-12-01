@@ -3,7 +3,8 @@ import TradeForm from "../components/tradeform/TradeForm";
 import TradeTable from "../components/TradeTable";
 import { API_BASE_URL } from "../config/api";
 
-export default function TradeLog() {
+export default function TradeLog({ theme = "dark" }) {
+  const isDark = theme === "dark";
   const [trades, setTrades] = useState([]);
   const [form, setForm] = useState({
     date: "",
@@ -32,7 +33,6 @@ export default function TradeLog() {
   const [deleteId, setDeleteId] = useState(null);
   const [showDialog, setShowDialog] = useState(false);
 
-  // Tái sử dụng 1 hàm fetch
   const loadTrades = async () => {
     try {
       const res = await fetch(`${API_BASE_URL}/api/trades`);
@@ -149,43 +149,78 @@ export default function TradeLog() {
     );
   };
 
-  // TÍNH TOTAL PROFIT
   const totalProfit = trades.reduce((sum, t) => sum + (t.profit || 0), 0);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 p-6">
-      <div className="mx-auto">
+    <div
+      className={`min-h-screen ${
+        isDark
+          ? "bg-gradient-to-br from-gray-900 via-[#0a0d14] to-gray-900"
+          : "bg-gradient-to-br from-gray-50 via-white to-gray-100"
+      } px-4 sm:px-6 py-6 transition-colors duration-300`}
+    >
+      <div className="mx-auto max-w-7xl">
         {/* HEADER */}
-        <h1 className="text-4xl font-black text-center mb-10 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-600 drop-shadow-lg">
-          Trade Log Pro
-        </h1>
+        <header className="text-center mb-8">
+          <h1
+            className={`text-4xl font-bold tracking-tight ${
+              isDark ? "text-white" : "text-gray-900"
+            }`}
+          >
+            Trade Log Pro
+          </h1>
+          <p
+            className={`mt-2 text-lg ${
+              isDark ? "text-gray-400" : "text-gray-600"
+            }`}
+          >
+            Theo dõi, phân tích và cải thiện từng lệnh
+          </p>
+        </header>
 
-        {/* FORM */}
-        <div className="mb-12">
-          <TradeForm form={form} setForm={setForm} addTrade={addTrade} />
-        </div>
-
-        {/* TABLE */}
-        <div className="bg-white/5 backdrop-blur-lg rounded-3xl p-6 shadow-2xl border border-white/10">
-          <TradeTable
-            trades={trades}
-            confirmDelete={confirmDelete}
-            updateExit={updateExit}
-            totalProfit={totalProfit}
-            onTradeUpdated={handleTradeUpdated}
+        {/* FORM + TABLE */}
+        <div className="space-y-8">
+          <TradeForm
+            form={form}
+            setForm={setForm}
+            addTrade={addTrade}
+            theme={theme}
           />
+
+          <div
+            className={`rounded-3xl border ${
+              isDark
+                ? "border-gray-700 bg-gray-800/90 backdrop-blur-md"
+                : "border-gray-200 bg-white/90 backdrop-blur-md"
+            } p-6 shadow-2xl overflow-hidden`}
+          >
+            <TradeTable
+              trades={trades}
+              confirmDelete={confirmDelete}
+              updateExit={updateExit}
+              totalProfit={totalProfit}
+              onTradeUpdated={handleTradeUpdated}
+              theme={theme}
+            />
+          </div>
         </div>
 
         {/* DELETE DIALOG */}
         {showDialog && (
           <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-[#161b22] border border-gray-700 rounded-2xl p-8 max-w-sm w-full shadow-2xl">
-              <h2 className="text-xl font-bold text-red-400 mb-4 text-center">
+            <div
+              className={`rounded-2xl p-8 max-w-sm w-full shadow-2xl border ${
+                isDark
+                  ? "bg-gray-800 border-gray-700 text-gray-100"
+                  : "bg-white border-gray-200 text-gray-900"
+              }`}
+            >
+              <h2 className="text-xl font-bold text-red-500 mb-4 text-center">
                 Xác nhận xóa lệnh?
               </h2>
-              <p className="text-gray-300 text-center mb-6">
+              <p className="text-center mb-6">
                 Hành động này{" "}
-                <span className="text-red-400 font-bold">
+                <span className="text-red-500 font-bold">
                   không thể hoàn tác
                 </span>
                 .
@@ -193,7 +228,11 @@ export default function TradeLog() {
               <div className="flex gap-4 justify-center">
                 <button
                   onClick={() => setShowDialog(false)}
-                  className="px-6 py-2.5 bg-gray-700 text-white rounded-xl font-medium hover:bg-gray-600 transition"
+                  className={`px-6 py-2.5 rounded-xl font-medium transition ${
+                    isDark
+                      ? "bg-gray-700 text-white hover:bg-gray-600"
+                      : "bg-gray-100 text-gray-800 hover:bg-gray-200"
+                  }`}
                 >
                   Hủy
                 </button>

@@ -22,31 +22,27 @@ function ResultCell({ profit }) {
 
   if (isWin) {
     return (
-      <div className="flex items-center gap-2">
-        <FiTarget className="text-green-600" size={26} />
-        <div className="text-green-600 font-black text-xl">
-          +${profit.toFixed(1)}
-        </div>
+      <div className="flex items-center gap-1 text-xs">
+        <FiTarget className="text-green-600" size={18} />
+        <div className="text-green-600 font-bold">+${profit.toFixed(1)}</div>
       </div>
     );
   }
 
   if (isLoss) {
     return (
-      <div className="flex items-center gap-2">
-        <FiAlertCircle className="text-red-600" size={26} />
-        <div className="text-red-600 font-black text-xl">
-          ${profit.toFixed(1)}
-        </div>
+      <div className="flex items-center gap-1 text-xs">
+        <FiAlertCircle className="text-red-600" size={18} />
+        <div className="text-red-600 font-bold">${profit.toFixed(1)}</div>
       </div>
     );
   }
 
   if (isBE) {
-    return <div className="text-amber-600 font-bold text-lg">BE</div>;
+    return <div className="text-amber-600 font-bold text-xs">BE</div>;
   }
 
-  return <div className="text-gray-500 italic">Pending</div>;
+  return <div className="text-gray-500 italic text-xs">Pending</div>;
 }
 
 export const ResultCellMemo = memo(ResultCell);
@@ -54,14 +50,14 @@ export const ResultCellMemo = memo(ResultCell);
 /* ============ GRADE STARS ============ */
 
 function GradeStars({ grade }) {
-  if (!grade) return <span className="text-gray-400">—</span>;
+  if (!grade) return <span className="text-gray-400 text-xs">—</span>;
 
   return (
     <>
       {Array.from({ length: 5 }).map((_, i) => (
         <FiStar
           key={i}
-          size={22}
+          size={16}
           className={i < grade ? "text-yellow-500" : "text-gray-300"}
         />
       ))}
@@ -92,7 +88,7 @@ function ChartCell({ trade, uploadingAfterId, onUploadAfter, onDeleteAfter }) {
   const isUploading = uploadingAfterId === trade.id;
 
   return (
-    <div className="flex items-center justify-center gap-4">
+    <div className="flex items-center justify-center gap-3 text-xs">
       {/* BEFORE */}
       <div className="flex flex-col items-center gap-1">
         {beforeUrl ? (
@@ -104,8 +100,8 @@ function ChartCell({ trade, uploadingAfterId, onUploadAfter, onDeleteAfter }) {
             className="block"
             title="Chart BEFORE"
           >
-            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center hover:bg-blue-200 transition">
-              <FiImage className="text-blue-700" size={20} />
+            <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center hover:bg-blue-200 transition">
+              <FiImage className="text-blue-700" size={16} />
             </div>
           </a>
         ) : (
@@ -125,8 +121,8 @@ function ChartCell({ trade, uploadingAfterId, onUploadAfter, onDeleteAfter }) {
               className="block"
               title="Chart AFTER"
             >
-              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center hover:bg-green-200 transition">
-                <FiImage className="text-green-700" size={20} />
+              <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center hover:bg-green-200 transition">
+                <FiImage className="text-green-700" size={16} />
               </div>
             </a>
 
@@ -138,8 +134,8 @@ function ChartCell({ trade, uploadingAfterId, onUploadAfter, onDeleteAfter }) {
                 className="hidden"
                 onChange={handleFileChange}
               />
-              <div className="w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center shadow-lg hover:bg-blue-700">
-                <FiPlus className="text-white" size={12} />
+              <div className="w-4 h-4 bg-blue-600 rounded-full flex items-center justify-center shadow-lg hover:bg-blue-700">
+                <FiPlus className="text-white" size={10} />
               </div>
             </label>
 
@@ -152,8 +148,8 @@ function ChartCell({ trade, uploadingAfterId, onUploadAfter, onDeleteAfter }) {
               className="absolute -top-2 -left-2 opacity-0 group-hover:opacity-100 transition-opacity"
               title="Xóa chart after"
             >
-              <div className="w-5 h-5 bg-red-600 rounded-full flex items-center justify-center shadow-lg hover:bg-red-700">
-                <FiX className="text-white" size={12} />
+              <div className="w-4 h-4 bg-red-600 rounded-full flex items-center justify-center shadow-lg hover:bg-red-700">
+                <FiX className="text-white" size={10} />
               </div>
             </button>
 
@@ -171,8 +167,8 @@ function ChartCell({ trade, uploadingAfterId, onUploadAfter, onDeleteAfter }) {
               className="hidden"
               onChange={handleFileChange}
             />
-            <div className="w-10 h-10 bg-gray-200 rounded-lg flex items-center justify-center hover:bg-gray-300 transition">
-              <FiPlus className="text-gray-700" size={20} />
+            <div className="w-8 h-8 bg-gray-200 rounded-lg flex items-center justify-center hover:bg-gray-300 transition">
+              <FiPlus className="text-gray-700" size={16} />
             </div>
           </label>
         )}
@@ -195,7 +191,7 @@ function CloseCell({
   onManualSubmit,
 }) {
   if (trade.exit) {
-    return <span className="text-green-700 font-bold">Closed</span>;
+    return <span className="text-green-700 font-bold text-xs">Closed</span>;
   }
 
   const quickCloseButtons = [
@@ -217,7 +213,7 @@ function CloseCell({
   ];
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2 text-xs">
       {quickCloseButtons.map((btn) => (
         <button
           key={btn.label}
@@ -225,7 +221,7 @@ function CloseCell({
             e.stopPropagation();
             updateExit(trade.id, btn.value);
           }}
-          className={clsx("px-3 py-1 rounded-xl text-sm", btn.className)}
+          className={clsx("px-2 py-1 rounded-xl text-xs", btn.className)}
         >
           {btn.label}
         </button>
@@ -235,7 +231,7 @@ function CloseCell({
         <div className="flex gap-2">
           <input
             type="number"
-            className="border rounded-lg px-2 py-1 w-20"
+            className="border rounded-lg px-2 py-1 w-20 text-xs"
             placeholder="Exit"
             value={manualValue}
             onChange={(e) => setManualValue(e.target.value)}
@@ -246,7 +242,7 @@ function CloseCell({
               e.stopPropagation();
               onManualSubmit();
             }}
-            className="bg-blue-600 text-white px-3 rounded-lg"
+            className="bg-blue-600 text-white px-2 rounded-lg text-xs"
           >
             OK
           </button>
@@ -257,7 +253,7 @@ function CloseCell({
             e.stopPropagation();
             setManualId(trade.id);
           }}
-          className="px-3 py-1 bg-gray-700 text-white rounded-xl text-sm hover:bg-gray-800"
+          className="px-3 py-1 bg-gray-700 text-white rounded-xl text-xs hover:bg-gray-800"
         >
           Manual
         </button>
@@ -272,25 +268,25 @@ export const CloseCellMemo = memo(CloseCell);
 
 function ActionButtons({ trade, onOpenDetail, onDelete }) {
   return (
-    <div className="flex items-center justify-center gap-3">
+    <div className="flex items-center justify-center gap-2 text-xs">
       <button
         onClick={(e) => {
           e.stopPropagation();
           onOpenDetail(trade);
         }}
-        className="p-3 bg-emerald-100 rounded-full hover:bg-emerald-200 transition"
+        className="p-2 bg-emerald-100 rounded-full hover:bg-emerald-200 transition"
         title="Xem chi tiết"
       >
-        <FiEye className="text-emerald-600" size={22} />
+        <FiEye className="text-emerald-600" size={16} />
       </button>
       <button
         onClick={(e) => {
           e.stopPropagation();
           onDelete(trade.id);
         }}
-        className="p-3 bg-red-100 rounded-full hover:bg-red-200"
+        className="p-2 bg-red-100 rounded-full hover:bg-red-200"
       >
-        <FiTrash2 className="text-red-600" size={22} />
+        <FiTrash2 className="text-red-600" size={16} />
       </button>
     </div>
   );

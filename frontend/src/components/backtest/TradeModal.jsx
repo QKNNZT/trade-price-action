@@ -4,7 +4,7 @@
 // - Centralized constants
 // - Cleaner handlers
 // - Improved readability
-// - UI unchanged
+// - Theme-aware (dark / light)
 
 import React, { useState, useEffect } from "react";
 import { format } from "date-fns";
@@ -32,16 +32,27 @@ const PSYCH_EMOJI = {
   neutral: "😐",
 };
 
-export default function TradeModal({ trade, onClose, trades, setTrades, index, onSelect }) {
+export default function TradeModal({
+  trade,
+  onClose,
+  trades,
+  setTrades,
+  index,
+  onSelect,
+  theme = "dark",
+}) {
   const [data, setData] = useState({ ...DEFAULT_VALUES, ...trade });
   const [showDetails, setShowDetails] = useState(false);
+
+  const isDark = theme === "dark";
 
   useEffect(() => {
     setData({ ...DEFAULT_VALUES, ...trade });
     setShowDetails(false);
   }, [trade]);
 
-  const update = (field, value) => setData((prev) => ({ ...prev, [field]: value }));
+  const update = (field, value) =>
+    setData((prev) => ({ ...prev, [field]: value }));
 
   const save = () => {
     setTrades(trades.map((t) => (t.id === data.id ? data : t)));
@@ -52,18 +63,89 @@ export default function TradeModal({ trade, onClose, trades, setTrades, index, o
 
   const go = (direction) => {
     const newIndex = index + direction;
-    if (newIndex >= 0 && newIndex < trades.length) onSelect(trades[newIndex]);
+    if (newIndex >= 0 && newIndex < trades.length) {
+      onSelect(trades[newIndex]);
+    }
   };
 
   const getPsychEmoji = (key) => PSYCH_EMOJI[key] || "😐";
 
+  // ──────────────────────────────────────────────────────────────
+  // THEME CLASSES
+  // ──────────────────────────────────────────────────────────────
+  const navBtnBase =
+    "absolute top-1/2 -translate-y-1/2 p-4 rounded-full transition border z-50";
+  const navBtnLeftClass = [
+    navBtnBase,
+    "left-4",
+    isDark
+      ? "bg-white/10 hover:bg-white/20 border-gray-600 text-white disabled:opacity-30"
+      : "bg-white hover:bg-slate-100 border-slate-300 text-slate-700 disabled:opacity-30",
+  ].join(" ");
+
+  const navBtnRightClass = [
+    navBtnBase,
+    "right-4",
+    isDark
+      ? "bg-white/10 hover:bg-white/20 border-gray-600 text-white disabled:opacity-30"
+      : "bg-white hover:bg-slate-100 border-slate-300 text-slate-700 disabled:opacity-30",
+  ].join(" ");
+
+  const modalClass = [
+    "relative w-full",
+    "max-w-full sm:max-w-3xl md:max-w-4xl lg:max-w-5xl xl:max-w-6xl",
+    "max-h-[92vh] rounded-3xl overflow-hidden",
+    "shadow-2xl border flex flex-col",
+    isDark
+      ? "bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-slate-700"
+      : "bg-gradient-to-br from-blue-50 via-white to-blue-50 border-blue-200",
+  ].join(" ");
+
+  const headerClass = [
+    "flex justify-between items-start p-6 pb-4 flex-shrink-0 border-b",
+    isDark ? "border-gray-800" : "border-slate-200",
+  ].join(" ");
+
+  const titleSymbolClass = [
+    "text-4xl font-bold flex items-center gap-3",
+    isDark ? "text-white" : "text-slate-900",
+  ].join(" ");
+
+  const titleTfClass = `text-xl font-normal ${
+    isDark ? "text-gray-400" : "text-slate-500"
+  }`;
+
+  const dateClass = `mt-1 text-lg ${
+    isDark ? "text-gray-400" : "text-slate-500"
+  }`;
+
+  const detailsBtnClass = [
+    "flex items-center gap-2 px-4 py-2 rounded-xl text-sm transition",
+    isDark
+      ? "bg-gray-800/70 hover:bg-gray-700 text-slate-100"
+      : "bg-slate-100 hover:bg-slate-200 text-slate-800",
+  ].join(" ");
+
+  const closeBtnClass = [
+    "transition",
+    isDark
+      ? "text-gray-400 hover:text-white"
+      : "text-slate-400 hover:text-slate-700",
+  ].join(" ");
+
+  const leftPaneClass =
+    "w-full md:w-1/2 overflow-y-auto p-5 sm:p-6 space-y-6 bg-gradient-to-b from-transparent to-slate-800/20 dark:to-slate-900/30";
+
+  // ──────────────────────────────────────────────────────────────
+  // RENDER
+  // ──────────────────────────────────────────────────────────────
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-xl z-50 flex items-center justify-center p-4">
       {/* Nav Buttons */}
       <button
         onClick={() => go(-1)}
         disabled={index === 0}
-        className="absolute left-4 top-1/2 -translate-y-1/2 p-4 rounded-full bg-white/10 hover:bg-white/20 border border-gray-600 text-white transition disabled:opacity-30 z-50"
+        className={navBtnLeftClass}
       >
         <ChevronLeft className="w-8 h-8" />
       </button>
@@ -71,33 +153,37 @@ export default function TradeModal({ trade, onClose, trades, setTrades, index, o
       <button
         onClick={() => go(1)}
         disabled={index === trades.length - 1}
-        className="absolute right-4 top-1/2 -translate-y-1/2 p-4 rounded-full bg-white/10 hover:bg-white/20 border border-gray-600 text-white transition disabled:opacity-30 z-50"
+        className={navBtnRightClass}
       >
         <ChevronRight className="w-8 h-8" />
       </button>
 
       {/* Main Modal */}
-      <div className="bg-gradient-to-br from-[#1a1b20] to-[#1f2128] w-full max-w-7xl lg:max-w-[92vw] xl:max-w-[94vw] 2xl:max-w-[90vw] max-h-[92vh] rounded-3xl shadow-2xl border border12 border-gray-800 overflow-hidden flex flex-col">
+      <div className={modalClass}>
         {/* Header */}
-        <div className="flex justify-between items-start p-6 pb-4 flex-shrink-0 border-b border-gray-800">
+        <div className={headerClass}>
           <div>
-            <h2 className="text-4xl font-bold text-white flex items-center gap-3">
+            <h2 className={titleSymbolClass}>
               {data.symbol}
-              <span className="text-xl font-normal text-gray-400">{data.timeframe}</span>
+              <span className={titleTfClass}>{data.timeframe}</span>
             </h2>
-            <p className="text-gray-400 mt-1 text-lg">{format(data.date, "dd MMMM yyyy")}</p>
+            <p className={dateClass}>{format(data.date, "dd MMMM yyyy")}</p>
           </div>
 
           <div className="flex items-center gap-3">
             <button
               onClick={() => setShowDetails((s) => !s)}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-800/70 hover:bg-gray-700 rounded-xl text-sm transition"
+              className={detailsBtnClass}
             >
-              {showDetails ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              {showDetails ? (
+                <EyeOff className="w-4 h-4" />
+              ) : (
+                <Eye className="w-4 h-4" />
+              )}
               {showDetails ? "Hide" : "Details"}
             </button>
 
-            <button onClick={onClose} className="text-gray-400 hover:text-white">
+            <button onClick={save} className={closeBtnClass}>
               <XCircle className="w-9 h-9" />
             </button>
           </div>
@@ -105,16 +191,32 @@ export default function TradeModal({ trade, onClose, trades, setTrades, index, o
 
         {/* Body */}
         <div className="flex flex-1 min-h-0">
-          {/* Left */}
-          <div className="w-full md:w-1/2 overflow-y-auto p-6 space-y-8">
-            <TradeSummary data={data} update={update} />
-            <TradePsychology data={data} update={update} getPsychEmoji={getPsychEmoji} />
-            {showDetails && <TradeDetails data={data} />}
-            <TradeActions clone={clone} save={save} index={index} trades={trades} />
+          {/* Left column */}
+          <div className={leftPaneClass}>
+            <TradeSummary data={data} update={update} theme={theme} />
+            <TradePsychology
+              data={data}
+              update={update}
+              getPsychEmoji={getPsychEmoji}
+              theme={theme}
+            />
+            {showDetails && <TradeDetails data={data} theme={theme} />}
+            <TradeActions
+              clone={clone}
+              save={save}
+              index={index}
+              trades={trades}
+              theme={theme}
+            />
           </div>
 
           {/* Right: Screenshot */}
-          <TradeScreenshot screenshot={data.screenshot} />
+          <TradeScreenshot
+            screenshot={data.screenshot}
+            setScreenshot={(value) => update("screenshot", value)}
+            update={update} // hàm update bạn đang dùng cho form
+            theme="dark"
+          />
         </div>
       </div>
     </div>

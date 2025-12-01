@@ -1,3 +1,5 @@
+import { CheckCircle2, XCircle, AlertCircle } from "lucide-react";
+
 export const SETUP_TYPES = [
   { value: "pinbar", label: "Pinbar", color: "bg-blue-500" },
   { value: "fakey", label: "Fakey", color: "bg-purple-500" },
@@ -9,10 +11,26 @@ export const SETUP_TYPES = [
   { value: "fvg", label: "Fair Value Gap", color: "bg-pink-500" },
 ];
 
-import { CheckCircle2, XCircle, AlertCircle } from "lucide-react";
-
 export const RESULT_TYPES = [
-  { value: "win", label: "Win", icon: CheckCircle2, color: "text-green-400" },
-  { value: "loss", label: "Loss", icon: XCircle, color: "text-red-400" },
-  { value: "be", label: "Breakeven", icon: AlertCircle, color: "text-yellow-400" },
+  {
+    value: "win",
+    label: "Win",
+    icon: CheckCircle2,
+    colorDark: "text-emerald-400",
+    colorLight: "text-emerald-600",
+  },
+  {
+    value: "loss",
+    label: "Loss",
+    icon: XCircle,
+    colorDark: "text-rose-400",
+    colorLight: "text-rose-600",
+  },
+  {
+    value: "be",
+    label: "Breakeven",
+    icon: AlertCircle,
+    colorDark: "text-amber-300",
+    colorLight: "text-amber-500",
+  },
 ];

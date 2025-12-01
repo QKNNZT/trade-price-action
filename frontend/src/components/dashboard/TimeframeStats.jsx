@@ -2,24 +2,139 @@
 import { Bar } from "react-chartjs-2";
 import { chartOptions } from "../../utils/chartOptions";
 
-export default function TimeframeStats({ data }) {
-  return (
-    
+export default function TimeframeStats({ data, theme = "dark" }) {
+  const isDark = theme === "dark";
 
-      <div className="h-80">
-        <Bar
-          data={{
-            labels: Object.keys(data),
-            datasets: [
-              {
-                label: "Winrate %",
-                data: Object.values(data).map(s => (s.win / s.total * 100).toFixed(1)),
-                backgroundColor: "#a855f7",
-              },
-            ],
-          }}
-          options={chartOptions}
-        />
+  // ──────────────────────────────────────────────────────────────
+  // XỬ LÝ DỮ LIỆU
+  // ──────────────────────────────────────────────────────────────
+  const labels = Object.keys(data).filter((tf) => data[tf].total > 0);
+  const winrates = labels.map((tf) => {
+    const { win, total } = data[tf];
+    return total > 0 ? ((win / total) * 100).toFixed(1) : 0;
+  });
+
+  if (!labels.length) {
+    return (
+      <div className={`h-full flex items-center justify-center text-sm ${isDark ? "text-gray-500" : "text-gray-400"}`}>
+        No timeframe data yet.
+      </div>
+    );
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  // MÀU SẮC THEO THEME
+  // ──────────────────────────────────────────────────────────────
+  const barColor = {
+    dark: "rgba(168, 85, 247, 0.88)",   // purple-500
+    light: "rgba(147, 51, 234, 0.88)",  // purple-600
+  };
+
+  // Đậm hơn nếu winrate cao
+  const backgroundColors = winrates.map((rate) => {
+    const intensity = 0.8 + (rate / 100) * 0.2; // 80% → 100%
+    return isDark
+      ? `rgba(168, 85, 247, ${intensity})`
+      : `rgba(147, 51, 234, ${intensity})`;
+  });
+
+  const gridColor = isDark ? "#334155" : "#e5e7eb";     // slate-700 / gray-200
+  const tickColor = isDark ? "#94a3b8" : "#64748b";     // slate-400 / slate-500
+  const borderColor = isDark ? "#475569" : "#cbd5e1";   // slate-600 / slate-300
+
+  // ──────────────────────────────────────────────────────────────
+  // DATA
+  // ──────────────────────────────────────────────────────────────
+  const chartData = {
+    labels,
+    datasets: [
+      {
+        label: "Winrate (%)",
+        data: winrates,
+        backgroundColor: backgroundColors,
+        borderColor: borderColor,
+        borderWidth: 1,
+        borderRadius: 8,
+        borderSkipped: false,
+        barPercentage: 0.75,
+        categoryPercentage: 0.8,
+      },
+    ],
+  };
+
+  // ──────────────────────────────────────────────────────────────
+  // OPTIONS
+  // ──────────────────────────────────────────────────────────────
+  const options = {
+    ...chartOptions,
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: "index", intersect: false },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: isDark ? "rgba(31, 41, 55, 0.95)" : "rgba(255, 255, 255, 0.95)",
+        titleColor: tickColor,
+        bodyColor: tickColor,
+        borderColor: borderColor,
+        borderWidth: 1,
+        cornerRadius: 8,
+        displayColors: false,
+        callbacks: {
+          label: (ctx) => {
+            const value = ctx.parsed.y;
+            const tf = ctx.label;
+            const stats = data[tf];
+            return `${tf}: ${value}% (${stats.win}/${stats.total} wins)`;
+          },
+        },
+      },
+    },
+    scales: {
+      x: {
+        grid: { display: false },
+        ticks: {
+          color: tickColor,
+          font: { weight: "600", size: 12 },
+          maxRotation: 0,
+          minRotation: 0,
+        },
+      },
+      y: {
+        beginAtZero: true,
+        max: 100,
+        grid: {
+          color: gridColor,
+          lineWidth: 1,
+          drawBorder: false,
+        },
+        ticks: {
+          color: tickColor,
+          callback: (value) => `${value}%`,
+          padding: 8,
+          stepSize: 20,
+        },
+        title: {
+          display: true,
+          text: "Winrate (%)",
+          color: tickColor,
+          font: { size: 12, weight: "bold" },
+          padding: { top: 10 },
+        },
+      },
+    },
+    animation: {
+      duration: 1100,
+      easing: "easeOutQuart",
+    },
+  };
+
+  // ──────────────────────────────────────────────────────────────
+  // RENDER
+  // ──────────────────────────────────────────────────────────────
+  return (
+    <div className="h-full w-full">
+      <Bar data={chartData} options={options} />
     </div>
   );
 }

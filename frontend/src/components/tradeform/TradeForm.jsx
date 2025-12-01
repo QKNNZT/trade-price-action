@@ -1,4 +1,3 @@
-// components/tradeform/TradeForm.jsx
 import { useState, useEffect, useMemo, useRef } from "react";
 import { FiUpload } from "react-icons/fi";
 import { toast } from "react-hot-toast";
@@ -15,7 +14,9 @@ import EntryModelSection from "./EntryModelSection";
 import TradeManagementSection from "./TradeManagementSection";
 import ChartUploadSection from "./ChartUploadSection";
 
-export default function TradeForm({ form, setForm, addTrade }) {
+export default function TradeForm({ form, setForm, addTrade, theme = "dark" }) {
+  const isDark = theme === "dark";
+
   const [riskPct, setRiskPct] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const formRef = useRef(null);
@@ -45,8 +46,7 @@ export default function TradeForm({ form, setForm, addTrade }) {
     }
   }, [form.date, form.symbol]);
 
-  const updateForm = (updates) =>
-    setForm((prev) => ({ ...prev, ...updates }));
+  const updateForm = (updates) => setForm((prev) => ({ ...prev, ...updates }));
 
   const symbolOptions = useMemo(() => {
     const symbols = Array.from(
@@ -140,7 +140,7 @@ export default function TradeForm({ form, setForm, addTrade }) {
         rr: position.actualRR > 0 ? position.actualRR : null,
       };
 
-      await addTrade(trade); // async await
+      await addTrade(trade);
 
       toast.success("Trade đã được thêm thành công!");
       resetForm();
@@ -166,7 +166,11 @@ export default function TradeForm({ form, setForm, addTrade }) {
     <form
       ref={formRef}
       onSubmit={handleAddTrade}
-      className="bg-[#0d1117] text-white p-8 rounded-2xl shadow-2xl mb-10 border border-[#1f2937]"
+      className={`p-8 rounded-2xl shadow-2xl mb-10 border transition-colors duration-300 ${
+        isDark
+          ? "bg-[#0d1117] text-white border-[#1f2937]"
+          : "bg-white text-gray-900 border-gray-200"
+      }`}
     >
       <h2 className="text-3xl font-bold mb-8 text-center drop-shadow-lg">
         Add New Trade{" "}
@@ -180,7 +184,8 @@ export default function TradeForm({ form, setForm, addTrade }) {
         symbolOptions={symbolOptions}
         setupOptions={setupOptions}
         onSetupSelect={handleSetupSelect}
-        symbolInputRef={symbolInputRef} // truyền ref
+        symbolInputRef={symbolInputRef}
+        theme={theme}
       />
 
       {/* AUTO CALCULATOR */}
@@ -190,6 +195,7 @@ export default function TradeForm({ form, setForm, addTrade }) {
         riskPct={riskPct}
         setRiskPct={setRiskPct}
         position={position}
+        theme={theme}
       />
 
       {/* CAPITAL + SESSION + TIMEFRAME + CONFLUENCE */}
@@ -197,34 +203,47 @@ export default function TradeForm({ form, setForm, addTrade }) {
         form={form}
         updateForm={updateForm}
         handleMultiChange={handleMultiChange}
+        theme={theme}
       />
 
       {/* MARKET STRUCTURE */}
-      <MarketStructureSection form={form} updateForm={updateForm} />
+      <MarketStructureSection
+        form={form}
+        updateForm={updateForm}
+        theme={theme}
+      />
 
       {/* ENTRY MODEL */}
-      <EntryModelSection form={form} handleMultiChange={handleMultiChange} />
+      <EntryModelSection
+        form={form}
+        handleMultiChange={handleMultiChange}
+        theme={theme}
+      />
 
       {/* TRADE MANAGEMENT */}
-      <TradeManagementSection form={form} updateForm={updateForm} />
+      <TradeManagementSection
+        form={form}
+        updateForm={updateForm}
+        theme={theme}
+      />
 
       {/* CHART + ENTRY REASON */}
-      <ChartUploadSection form={form} updateForm={updateForm} />
+      <ChartUploadSection form={form} updateForm={updateForm} theme={theme} />
 
       {/* ADD BUTTON */}
       <div className="mt-10">
         <button
           type="submit"
           disabled={!isFormValid || isSubmitting}
-          className={`w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-black text-xl py-6 rounded-xl shadow-xl hover:scale-105 transition flex items-center justify-center gap-3 transform-gpu ${
+          className={`w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-black text-xl py-6 rounded-xl shadow-xl flex items-center justify-center gap-3 transform-gpu transition ${
             !isFormValid || isSubmitting
               ? "opacity-40 cursor-not-allowed"
-              : "hover:shadow-2xl"
+              : "hover:scale-105 hover:shadow-2xl"
           }`}
         >
           {isSubmitting ? (
             <>
-              <div className="animate-spin rounded-full h-6 w-6 border-2 border-white border-t-transparent"></div>
+              <div className="animate-spin rounded-full h-6 w-6 border-2 border-white border-t-transparent" />
               <span>Đang thêm...</span>
             </>
           ) : (
